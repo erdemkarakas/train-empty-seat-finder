@@ -2,7 +2,7 @@
     "crons": [
         {
             "path": "/api/check-trains",
-            "schedule": "*/5 * * * *"
+            "schedule": "0 12 * * *"
         }
     ]
 }
