@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { kv } from '@/lib/kv-provider';
 import { checkTrainAvailability, hasAvailableSeats } from '@/lib/train-service';
-import { SearchResult, StoredSearch } from '@/lib/types';
+import { SearchResult, StoredSearch, SearchRequest } from '@/lib/types';
 import axios from 'axios';
 
 // Cron job çalıştığında keyleri açığa çıkarmadan sorgular yapacağız
@@ -87,17 +87,27 @@ export async function GET() {
         // Aramayı gerçekleştir
         console.log(`Arama yapılıyor: ${key}`);
         const searchParams = search.params;
+
+        // İstasyon ID'leri
+        const departureStationId = searchParams.departureStation.id;
+        const arrivalStationId = searchParams.arrivalStation.id;
+
+        // Tarih formatı
+        const departureDate = typeof searchParams.departureDate === 'string' ? 
+            searchParams.departureDate : 
+            new Date(searchParams.departureDate as string).toISOString().split('T')[0];
         
-        // SearchRequest oluştur
-        const searchRequest = {
+        // SearchRequest oluştur - TypeScript uyumlu
+        const searchRequest: SearchRequest = {
+          departureStationId: departureStationId,
+          arrivalStationId: arrivalStationId,
+          departureDate: departureDate,
           searchRoutes: [{
-            departureStationId: parseInt(searchParams.departureStation.id),
+            departureStationId: parseInt(departureStationId),
             departureStationName: searchParams.departureStation.name,
-            arrivalStationId: parseInt(searchParams.arrivalStation.id),
+            arrivalStationId: parseInt(arrivalStationId),
             arrivalStationName: searchParams.arrivalStation.name,
-            departureDate: typeof searchParams.departureDate === 'string' ? 
-              searchParams.departureDate : 
-              new Date(searchParams.departureDate as string).toISOString().split('T')[0]
+            departureDate: departureDate
           }],
           passengerTypeCounts: [
             { id: 1, count: 1 } // Yetişkin

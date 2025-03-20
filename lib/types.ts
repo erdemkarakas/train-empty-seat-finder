@@ -19,8 +19,8 @@ export interface SearchFormData {
 
 // Search request type
 export interface SearchRequest {
-  departureStationId: string;
-  arrivalStationId: string;
+  departureStationId: string | number;
+  arrivalStationId: string | number;
   departureDate: string;
   searchRoutes?: Array<{
     departureStationId: number;

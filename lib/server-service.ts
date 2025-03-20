@@ -123,13 +123,20 @@ function generateSearchId(): string {
  * TCDD API isteği için SearchRequest oluşturur
  */
 export function createSearchRequest(formData: SearchFormData): SearchRequest {
+  const departureStationId = parseInt(formData.departureStation.id.split('-')[1]);
+  const arrivalStationId = parseInt(formData.arrivalStation.id.split('-')[1]);
+  const departureDate = formatDepartureDateForAPI(formData.departureDate);
+  
   return {
+    departureStationId: departureStationId,
+    arrivalStationId: arrivalStationId,
+    departureDate: departureDate,
     searchRoutes: [{
-      departureStationId: parseInt(formData.departureStation.id.split('-')[1]),
+      departureStationId: departureStationId,
       departureStationName: formData.departureStation.name.split(' , ')[0],
-      arrivalStationId: parseInt(formData.arrivalStation.id.split('-')[1]),
+      arrivalStationId: arrivalStationId,
       arrivalStationName: formData.arrivalStation.name.split(' , ')[0],
-      departureDate: formatDepartureDateForAPI(formData.departureDate)
+      departureDate: departureDate
     }],
     passengerTypeCounts: [
       { id: 0, count: 1 }
