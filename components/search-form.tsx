@@ -13,8 +13,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { stations } from "@/app/destination";
 import { Station, SearchFormData } from "@/lib/types";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+// import { Switch } from "@/components/ui/switch";
+// import { Label } from "@/components/ui/label";
 import { v4 as uuidv4 } from "uuid";
 
 // Etkin arama türü için interface ekleyelim
@@ -52,32 +52,51 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
   const [filteredStations, setFilteredStations] = useState<Station[]>([]);
   const [showStationSearch, setShowStationSearch] = useState<"departure" | "arrival" | null>(null);
   const [timeError, setTimeError] = useState<string | null>(null);
-  const [backgroundSearch, setBackgroundSearch] = useState(false);
   const [telegramConfigured, setTelegramConfigured] = useState(false);
   const [searches, setSearches] = useState<ActiveSearch[]>([]);
-  const isTelegramConfigured = telegramConfigured;
+  const [telegramApiKey, setTelegramApiKey] = useState<string | null>(null);
+  const [telegramChatId, setTelegramChatId] = useState<string | null>(null);
 
   // Check if Telegram is configured on load
   useEffect(() => {
-    const apiKey = localStorage.getItem("telegramApiKey");
-    const chatId = localStorage.getItem("telegramChatId");
-    setTelegramConfigured(!!(apiKey && chatId));
-    
-    // Listen for changes in Telegram config
-    const handleStorageChange = () => {
+    // Safely access localStorage in the browser
+    if (typeof window !== 'undefined') {
       const apiKey = localStorage.getItem("telegramApiKey");
       const chatId = localStorage.getItem("telegramChatId");
+      
+      setTelegramApiKey(apiKey);
+      setTelegramChatId(chatId);
       setTelegramConfigured(!!(apiKey && chatId));
-    };
-    
-    window.addEventListener("localStorageUpdated", handleStorageChange);
-    window.addEventListener("storage", handleStorageChange);
-    
-    return () => {
-      window.removeEventListener("localStorageUpdated", handleStorageChange);
-      window.removeEventListener("storage", handleStorageChange);
-    };
+      
+      // Listen for changes in Telegram config
+      const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === "telegramApiKey" || e.key === "telegramChatId") {
+          const newApiKey = localStorage.getItem("telegramApiKey");
+          const newChatId = localStorage.getItem("telegramChatId");
+          
+          setTelegramApiKey(newApiKey);
+          setTelegramChatId(newChatId);
+          setTelegramConfigured(!!(newApiKey && newChatId));
+        }
+      };
+      
+      window.addEventListener("storage", handleStorageChange);
+      return () => {
+        window.removeEventListener("storage", handleStorageChange);
+      };
+    }
   }, []);
+
+  // Telegram durumunu console'a yazdır
+  useEffect(() => {
+    // telegramApiKey ve telegramChatId değişkenlerini doğrudan kullanarak
+    // daha ayrıntılı bir log mesajı oluştur
+    console.log(`Telegram durumu: ${telegramConfigured ? 'Yapılandırıldı' : 'Yapılandırılmadı'}`);
+    if (telegramConfigured) {
+      console.log(`Telegram API Anahtarı: ${telegramApiKey?.substring(0, 5)}...`);
+      console.log(`Telegram Chat ID: ${telegramChatId?.substring(0, 3)}...`);
+    }
+  }, [telegramConfigured, telegramApiKey, telegramChatId]);
 
   const form = useForm<SearchFormData>({
     defaultValues: {
@@ -115,7 +134,7 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
         // Return form values with backgroundSearch flag
         callback({
           ...values,
-          backgroundSearch: backgroundSearch
+          // backgroundSearch: backgroundSearch
         });
       })();
     },
@@ -197,9 +216,10 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
       // Add backgroundSearch flag to the form data
       const searchData = {
         ...data,
-        backgroundSearch: backgroundSearch
+        // backgroundSearch: backgroundSearch
       };
       
+      // Ensure all required ActiveSearch properties are included
       setSearches((prev) => [
         {
           id: uuidv4(),
@@ -207,9 +227,9 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
           arrivalStation: data.arrivalStation,
           departureDate: data.departureDate,
           searchInterval: data.searchInterval,
-          useBackgroundSearch: backgroundSearch,
+          useBackgroundSearch: false, // Default value since backgroundSearch is commented out
           isSearching: false,
-          telegramEnabled: backgroundSearch && isTelegramConfigured,
+          telegramEnabled: false, // Default value since telegramEnabled is commented out
         },
         ...prev,
       ]);
@@ -219,7 +239,7 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
   };
 
   // Arka plan arama durumuna göre arama sıklığını güncelleyelim
-  useEffect(() => {
+  /*useEffect(() => {
     // Kullanıcı arka plan aramasını etkinleştirirse, kısa aralık seçiliyse otomatik 5'e güncelleyelim
     if (backgroundSearch) {
       const currentInterval = parseInt(form.getValues('searchInterval'));
@@ -233,7 +253,7 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
         form.setValue('searchInterval', "2");
       }
     }
-  }, [backgroundSearch, form]);
+  }, [backgroundSearch, form]);*/
 
   // Aramalar oluşturulduğunda tarayıcıda kaydetmek için
   useEffect(() => {
@@ -493,12 +513,11 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="0">Tek seferlik arama</SelectItem>
-                    {!backgroundSearch && (
-                      <>
-                        <SelectItem value="1">1 dakika</SelectItem>
-                        <SelectItem value="2">2 dakika</SelectItem>
-                      </>
-                    )}
+                    {/* Kısa süreli arama seçenekleri */}
+                    <>
+                      <SelectItem value="1">1 dakika</SelectItem>
+                      <SelectItem value="2">2 dakika</SelectItem>
+                    </>
                     <SelectItem value="5">5 dakika</SelectItem>
                     <SelectItem value="10">10 dakika</SelectItem>
                     <SelectItem value="15">15 dakika</SelectItem>
@@ -511,7 +530,7 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
             )}
           />
 
-          {/* Arka planda ara seçeneği - Yeniden düzenlenmiş ve genişletilmiş */}
+          {/* Arka planda ara seçeneği - Yeniden düzenlenmiş ve genişletilmiş 
           <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200 md:col-span-2">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-3">
@@ -546,51 +565,10 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
             </div>
             
             <div className="ml-10 mt-2">
-              {/* Bilgi metni */}
-              {backgroundSearch ? (
-                <div className="space-y-2">
-                  <p className="text-sm text-slate-700 flex items-start">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-blue-500 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                    </svg>
-                    <span>
-                      <strong className="font-medium">Sunucu tarafında arama:</strong> Tarayıcınızı kapatsanız bile 24 saat boyunca sistem aramaya devam eder <br /> <span className="text-xs  text-orange-400">(Arama sıklığı 5 dakika olarak ayarlanmıştır, hızlı bulma olasılığı daha az)</span>
-                    </span>
-                  </p>
-                  <p className="text-sm text-slate-700 flex items-start">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-blue-500 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-                    </svg>
-                    <span>
-                      <strong className="font-medium">Bildirim sistemi:</strong> Koltuk bulunduğunda Telegram&apos;dan bildirim alırsınız
-                    </span>
-                  </p>
-                  {!telegramConfigured && (
-                    <p className="text-xs text-amber-600 pl-6">Telegram ayarlarını yapılandırmanız gerekmektedir</p>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-sm text-slate-700 flex items-start">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-amber-500 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    <span>
-                      <strong className="font-medium">Sadece tarayıcıda arama:</strong> Sayfayı kapattığınızda arama durur
-                    </span>
-                  </p>
-                  <p className="text-sm text-slate-700 flex items-start">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-slate-500 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z" />
-                    </svg>
-                    <span>
-                      <strong className="font-medium">Arka plan aramayı etkinleştirin</strong> ve sayfayı kapatsanız bile arama devam eder
-                    </span>
-                  </p>
-                </div>
-              )}
+              Bilgi metni buraya gelecek
             </div>
           </div>
+          */}
         </div>
 
         <Button type="submit" className="w-full my-4" disabled={loading || disabled}>

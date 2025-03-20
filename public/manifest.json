@@ -21,34 +21,5 @@
             "type": "image/svg+xml",
             "purpose": "any maskable"
         }
-    ],
-    "splash_pages": null,
-    "shortcuts": [
-        {
-            "name": "Arama Başlat",
-            "url": "/",
-            "icons": [
-                {
-                    "src": "/vercel.svg",
-                    "sizes": "96x96",
-                    "type": "image/svg+xml"
-                }
-            ]
-        }
-    ],
-    "screenshots": [
-        {
-            "src": "/next.svg",
-            "sizes": "1280x720",
-            "type": "image/svg+xml",
-            "form_factor": "wide",
-            "label": "TCDD Yüksek Hızlı Tren Boş Koltuk Arama Ekranı"
-        }
-    ],
-    "lang": "tr-TR",
-    "dir": "ltr",
-    "categories": [
-        "travel",
-        "utilities"
     ]
 }

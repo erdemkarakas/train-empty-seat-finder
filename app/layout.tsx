@@ -51,11 +51,24 @@ export default function RootLayout({
         {/* Genel ikonlar */}
         <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
-        <link rel="shortcut icon" href="/favicon.ico" />
         
         {/* Tren Emoji SVG favicons */}
         <link rel="icon" type="image/svg+xml" href="/train-emoji/train-emoji.svg" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        
+        {/* Favicon'ı sadece client tarafında yükleme scripti */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined') {
+                const link = document.createElement('link');
+                link.rel = 'shortcut icon';
+                link.href = '/favicon.ico';
+                document.head.appendChild(link);
+              }
+            `,
+          }}
+        />
         
         {/* Splash screen ların gösterilmesi için */}
         <meta name="apple-mobile-web-app-capable" content="yes" />

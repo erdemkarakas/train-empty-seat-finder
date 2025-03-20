@@ -6,13 +6,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import SearchForm, { SearchFormRef } from "@/components/search-form";
 import SearchHistory from "@/components/search-history";
 import SettingsDialog from "@/components/settings-dialog";
-import ActiveSearches from "@/components/active-searches";
+// import ActiveSearches from "@/components/active-searches";
 import { checkTrainAvailability, hasAvailableSeats, sendTelegramNotification } from "@/lib/train-service";
 import { SearchFormData, SearchRequest, SearchResult, SearchInfo, SearchHistoryItem } from "@/lib/types";
 import { stations } from "@/app/destination";
-import { startServerSearch, createSearchRequest } from "@/lib/server-service";
+import { createSearchRequest } from "@/lib/server-service";
+// import { startServerSearch } from "@/lib/server-service";
 import { Button } from "@/components/ui/button";
-import { generateUniqueId } from "@/lib/utils";
+// import { generateUniqueId } from "@/lib/utils";
 
 // Safari için standalone özelliği tanımlaması
 interface SafariNavigator extends Navigator {
@@ -46,15 +47,20 @@ export default function Home() {
   // Mobil cihaz kontrolü için state
   const [isMobile, setIsMobile] = useState(false);
   
-  // Kullanıcı ID
+  // Kullanıcı ID ve yerel depolama için kullanıcı bilgisi
   useEffect(() => {
+    // Only run in browser environment
+    if (typeof window === 'undefined') return;
+    
     // Kullanıcı ID'sini localStorage'dan al veya oluştur
     let id = localStorage.getItem("userId");
     if (!id) {
-      id = generateUniqueId();
+      // Basit rastgele ID oluştur
+      id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
       localStorage.setItem("userId", id);
     }
     setUserId(id);
+    console.log("Mevcut kullanıcı ID:", id);
   }, []);
   
   // PWA kurulum teşvikini kontrol et
@@ -127,6 +133,9 @@ export default function Home() {
 
   // Check if Telegram is configured
   useEffect(() => {
+    // Only run in browser environment
+    if (typeof window === 'undefined') return;
+    
     const checkTelegramConfig = () => {
       const apiKey = localStorage.getItem("telegramApiKey");
       const chatId = localStorage.getItem("telegramChatId");
@@ -165,8 +174,11 @@ export default function Home() {
   // Aktif Aramalar sayfasından gönderilen temizleme eventini dinle
   useEffect(() => {
     const handleClearResults = () => {
-      // Arama sonuçlarını temizle
-      setSearchResult(null);
+      // Sadece sonuçlar bulunamadığında temizle, başarılı aramayı korumak için
+      if (searchResult && !searchResult.found) {
+        // Arama sonuçlarını temizle
+        setSearchResult(null);
+      }
     };
 
     // Event listener'ı ekle
@@ -176,16 +188,16 @@ export default function Home() {
     return () => {
       window.removeEventListener('clearSearchResults', handleClearResults);
     };
-  }, []);
+  }, [searchResult]);
 
   const stopSearch = () => {
-    console.log("[stopSearch] Stopping search...", { hasInterval: !!searchInterval });
+    console.log(`[stopSearch] Kullanıcı (${userId}) için arama durduruluyor...`, { hasInterval: !!searchInterval });
     
     // Always update UI state even if there's no interval
     setIsSearching(false);
     
-    // Arama sonucunu temizle
-    setSearchResult(null);
+    // Artık arama sonuçlarını temizlemiyoruz
+    // setSearchResult(null);
     
     if (searchInterval) {
       console.log("[stopSearch] Clearing interval");
@@ -199,14 +211,18 @@ export default function Home() {
 
   const handleSearch = async (formData: SearchFormData) => {
     try {
-      setError(null);
-      setLoading(true);
-      setIsSearching(true);
-      
-      // Mevcut arama varsa durdur
+      // Always stop any ongoing search first
       if (searchInterval) {
         stopSearch();
       }
+      
+      // Clear any previous states
+      setError(null);
+      setSearchResult(null); // Clear previous search results
+      setLoading(true);
+      setIsSearching(true);
+      
+      console.log("Arama başlatılıyor, loading=true");
       
       // Arama formunu referansta sakla
       currentSearch.current = formData;
@@ -214,61 +230,25 @@ export default function Home() {
       // Save to search history
       updateSearchHistory(formData);
       
-      // Telegram bilgileri
-      const telegramApiKey = localStorage.getItem("telegramApiKey") || "";
-      const telegramChatId = localStorage.getItem("telegramChatId") || "";
-      
       // Create the search request - use the createSearchRequest helper function
       const searchRequest = createSearchRequest(formData);
       
-      // Check if this is a background search request
-      const isBackgroundSearch = formData.backgroundSearch === true;
+      // İstemci tarafında tek seferlik arama yap
+      await performSearch(searchRequest, formData);
       
-      // Background search with Telegram notifications
-      if (isBackgroundSearch && telegramApiKey && telegramChatId) {
-        try {
-          setLoading(true);
-          
-          // Server-side search
-          console.log(`[ServerSearch] Starting background search with userId: ${userId}`);
-          
-          const result = await startServerSearch(
-            formData,
-            telegramApiKey,
-            telegramChatId,
-            userId,
-            24 // 24 saat
-          );
-          
-          // Kullanıcıya bilgi ver
-          setSearchResult({
-            found: false,
-            message: `Sunucu tarafında arama başlatıldı! 24 saat boyunca her 5 dakikada bir kontrol edilecek. Telegram bildirimi gelecektir.`,
-            details: `Arama ID: ${result.searchId}\nBitiş: ${new Date(result.expiresAt).toLocaleString('tr-TR')}`
-          });
-          
-          // İstemci tarafında da hemen bir arama yap
-          await performSearch(searchRequest, formData);
-          
-        } catch (error) {
-          console.error("Server search error:", error);
-          setError(error instanceof Error ? error.message : "Sunucu tarafı arama başlatılamadı");
-        }
-        
-        setLoading(false);
+      // Eğer periyodik arama talep edildiyse başlat
+      if (formData.searchInterval && formData.searchInterval !== "0") {
+        console.log(`[ClientSearch] Kullanıcı ID: ${userId} için periyodik arama başlatılıyor`);
+        startPeriodicSearch(searchRequest, formData);
       } else {
-        // İstemci tarafında tek seferlik arama yap
-        await performSearch(searchRequest, formData);
-        
-        // Eğer periyodik arama talep edildiyse başlat
-        if (formData.searchInterval && formData.searchInterval !== "0") {
-          startPeriodicSearch(searchRequest, formData);
-        }
+        // Periyodik arama değilse, arama durumunu güncelle
+        setIsSearching(false);
       }
     } catch (err) {
       console.error("Search error:", err);
       setError(err instanceof Error ? err.message : "Bir hata oluştu");
       setLoading(false);
+      setIsSearching(false);
     }
   };
   
@@ -290,27 +270,33 @@ export default function Home() {
         formData.startTime,
         formData.endTime
       );
-      setSearchResult(result);
       
-      // If seats are found, send telegram notification and stop searching
+      // Always set loading to false when results are processed, regardless of success
+      setLoading(false);
+      console.log("Yükleme durumu false olarak ayarlandı");
+      
+      // Set the search result first before potentially stopping the search
+      setSearchResult(result);
+      console.log("Arama sonuçları state'e ayarlandı:", result);
+      
+      // If seats are found, send telegram notification but DON'T stop searching
       if (result.found) {
         const searchInfo: SearchInfo = {
-          departure: formData.departureStation.name,
-          arrival: formData.arrivalStation.name,
-          date: formData.departureDate.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\./g, '-'),
-          timeRange: `${formData.startTime} - ${formData.endTime}`
+          departure: formData.departureStation?.name || "Belirtilmemiş",
+          arrival: formData.arrivalStation?.name || "Belirtilmemiş",
+          date: formData.departureDate ? formData.departureDate.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\./g, '-') : "Belirtilmemiş",
+          timeRange: `${formData.startTime || "00:00"} - ${formData.endTime || "23:59"}`
         };
         
         try {
           await sendTelegramNotification(result, searchInfo);
         } catch (error) {
           console.error("Telegram bildirimi gönderilirken hata oluştu:", error);
-          // Bildirim gönderme hatası nedeniyle aramayı durdurmuyoruz
         }
-        stopSearch();
+        
+        // Koltuk bulunduğunda arama otomatik olarak durdurulmuyor
+        console.log("Koltuk bulundu! Fakat arama devam ediyor...");
       }
-      
-      setLoading(false);
     } catch (err) {
       console.error("Search error:", err);
       setError(err instanceof Error ? err.message : "Arama sırasında bir hata oluştu");
@@ -445,16 +431,19 @@ export default function Home() {
 
   // Arama geçmişini güncelle
   const updateSearchHistory = (formData: SearchFormData) => {
+    // Only run in browser environment
+    if (typeof window === 'undefined') return;
+    
     const searchHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]');
     const newSearchItem = {
       id: Date.now(),
-      departure: formData.departureStation.name,
-      arrival: formData.arrivalStation.name,
-      date: formData.departureDate.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\./g, '-'),
-      timeRange: `${formData.startTime} - ${formData.endTime}`,
+      departure: formData.departureStation?.name || "Belirtilmemiş",
+      arrival: formData.arrivalStation?.name || "Belirtilmemiş",
+      date: formData.departureDate ? formData.departureDate.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\./g, '-') : "Belirtilmemiş",
+      timeRange: `${formData.startTime || "00:00"} - ${formData.endTime || "23:59"}`,
       timestamp: new Date().toISOString(),
-      preferredClass: formData.preferredClass,
-      searchInterval: formData.searchInterval
+      preferredClass: formData.preferredClass || "ANY",
+      searchInterval: formData.searchInterval || "0"
     };
     
     searchHistory.unshift(newSearchItem);
@@ -480,7 +469,7 @@ export default function Home() {
       
       {/* Ana içerik - İki sütunlu düzen (mobilde tek sütun) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
-        {/* Sol taraf: Arama formu */}
+        {/* Sol taraf: Arama formu ve son aramalar */}
         <div className="lg:col-span-6 space-y-4">
           {/* Arama kartı */}
           <Card className="shadow-md">
@@ -510,15 +499,32 @@ export default function Home() {
               </div>
             </CardHeader>
             <CardContent className="pt-4 search-form-container">
-              <SearchForm ref={searchFormRef} onSearch={handleSearch} disabled={loading || isSearching} />
+              <SearchForm ref={searchFormRef} onSearch={handleSearch} />
+            </CardContent>
+          </Card>
+          
+          {/* Son Aramalar - İyileştirilmiş Tasarım - Arama formunun altına taşındı */}
+          <Card className="shadow-md overflow-hidden">
+            <CardHeader className="pb-2 bg-slate-50">
+              <CardTitle className="flex items-center text-base">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                </svg>
+                <span className="pl-0.5">Son Aramalar</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="px-4 py-2">
+                <SearchHistory onSelect={handleHistorySelect} />
+              </div>
             </CardContent>
           </Card>
         </div>
         
-        {/* Sağ taraf: Sonuçlar, telegram bildirimleri ve aramalar */}
+        {/* Sağ taraf: Sonuçlar ve telegram bildirimleri */}
         <div className="lg:col-span-6 space-y-4">
           {/* Telegram ayarları */}
-          <div className="mb-1">
+          <div className="mb-2">
             <SettingsDialog />
           </div>
           
@@ -528,6 +534,7 @@ export default function Home() {
               <CardTitle>Arama Sonuçları</CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
+              {/* Explicitly check the loading state first */}
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-6">
                   <div className="mb-3">
@@ -547,103 +554,258 @@ export default function Home() {
                     {error}
                   </AlertDescription>
                 </Alert>
-              ) : null}
-              
-              {isSearching && !loading && (
-                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                      </svg>
-                      <p className="text-blue-800 font-medium">Otomatik arama devam ediyor</p>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={stopSearch}
-                      className="bg-white hover:bg-red-50 border-red-300 text-red-600 hover:text-red-700"
-                    >
-                      Durdur
-                    </Button>
-                  </div>
-                  <p className="text-sm text-blue-700 ml-7">
-                    Son kontrol: {lastCheckTime || "Henüz yok"} 
-                    <span className="ml-2 px-2 py-0.5 bg-blue-100 rounded-full text-blue-800 text-xs">
-                      {searchCountRef.current} arama yapıldı
-                    </span>
-                  </p>
-                </div>
-              )}
-              
-              {!loading && searchResult && (
-                <div className={`p-4 border rounded-md mb-4 shadow-sm ${
-                  searchResult.found 
-                    ? 'bg-green-50 border-green-200' 
-                    : 'bg-yellow-50 border-yellow-200'
-                }`}>
-                  <div className="flex items-start">
-                    <div className={`mt-0.5 mr-3 ${
-                      searchResult.found ? 'text-green-600' : 'text-yellow-600'
+              ) : (
+                <>
+                  {/* Arama sonuçları - Her zaman göster, varsa */}
+                  {searchResult && (
+                    <div className={`p-4 border rounded-md mb-4 shadow-sm ${
+                      searchResult.found 
+                        ? 'bg-green-50 border-green-200' 
+                        : 'bg-yellow-50 border-yellow-200'
                     }`}>
-                      {searchResult.found ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                    <div>
-                      <p className={`font-medium ${
-                        searchResult.found ? 'text-green-800' : 'text-yellow-800'
-                      }`}>
-                        {searchResult.message}
-                      </p>
-                      {searchResult.details && (
-                        <div className="mt-2 text-sm whitespace-pre-line">
-                          {searchResult.details}
+                      <div className="flex flex-col space-y-2">
+                        <div className="flex items-center">
+                          <div className={`${
+                            searchResult.found ? 'text-green-600' : 'text-yellow-600'
+                          }`}>
+                            {searchResult.found ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
+                          <p className={`font-medium ${
+                            searchResult.found ? 'text-green-800' : 'text-yellow-800'
+                          }`}>
+                            {searchResult.message}
+                          </p>
                         </div>
-                      )}
+                        
+                        {searchResult.found && currentSearch.current && (
+                          <div className="mt-1 bg-green-50/60 p-2.5 rounded-md border border-green-100">
+                            <div className="flex flex-col gap-1.5">
+                              <div className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-green-600/80 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                </svg>
+                                <div className="min-w-0">
+                                  <span className="font-semibold text-sm text-green-800/80">Güzergah:</span>
+                                  <span className="ml-1 text-sm text-green-700/90 truncate">
+                                    {currentSearch.current.departureStation?.name?.split(" , ")[0] || "Belirtilmemiş"} → {currentSearch.current.arrivalStation?.name?.split(" , ")[0] || "Belirtilmemiş"}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-green-600/80 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                                </svg>
+                                <div>
+                                  <span className="font-semibold text-sm text-green-800/80">Tarih:</span>
+                                  <span className="ml-1 text-sm text-green-700/90">
+                                    {currentSearch.current.departureDate ? currentSearch.current.departureDate.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\./g, '-') : "Belirtilmemiş"}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-green-600/80 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                </svg>
+                                <div>
+                                  <span className="font-semibold text-sm text-green-800/80">Saat Aralığı:</span>
+                                  <span className="ml-1 text-sm text-green-700/90">
+                                    {currentSearch.current.startTime || "00:00"} - {currentSearch.current.endTime || "23:59"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {searchResult.details && (
+                          <div className="mt-1 bg-white p-3 rounded-lg max-h-96 overflow-y-auto w-full md:-mx-2 md:w-[calc(100%+16px)]">
+                            <div className="grid grid-cols-1 gap-2.5">
+                              {searchResult.details.split('\n- ').map((line, index) => {
+                                if (index === 0) {
+                                  // İlk satır için özel işleme
+                                  // Eğer ilk satır boşsa veya sadece "-" içeriyorsa atla
+                                  if (!line.trim() || line.trim() === "-") return null;
+                                  
+                                  // İlk satırın başındaki "- " varsa temizle
+                                  const cleanLine = line.startsWith("- ") ? line.substring(2) : line;
+                                  console.log("İlk satır içeriği:", cleanLine);
+                                  
+                                  // Tren bilgisini kontrol et - YATAKLI sınıfını da ekle
+                                  const match = cleanLine.match(/(BUSİNESS|EKONOMİ|YATAKLI): (\d+) koltuk \(([^\)]+)\)(.*)/);
+                                  if (!match) {
+                                    console.log("İlk satır regex match başarısız:", cleanLine);
+                                    return cleanLine ? (
+                                      <div key={index} className="p-4 border border-slate-200 rounded-md text-base">{cleanLine}</div>
+                                    ) : null;
+                                  }
+                                  
+                                  const [, seatClass, count, time, trainInfo] = match;
+                                  const isBusinessClass = seatClass === "BUSİNESS";
+                                  const isSleeperClass = seatClass === "YATAKLI";
+                                  
+                                  return (
+                                    <div key={index} className="flex items-center py-3 px-4 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
+                                      <div className={`flex-shrink-0 mr-4 ${
+                                        isBusinessClass ? "text-indigo-600" : 
+                                        isSleeperClass ? "text-purple-600" : 
+                                        "text-emerald-600"
+                                      }`}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                                          {isSleeperClass ? (
+                                            <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+                                          ) : (
+                                            <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 2H8.828a2 2 0 00-1.414.586L6.293 3.707A1 1 0 015.586 4H4z" />
+                                          )}
+                                        </svg>
+                                      </div>
+                                      <div className="flex-grow min-w-0">
+                                        <div className="flex flex-wrap items-center mb-1">
+                                          <span className={`mr-3 font-medium text-base ${
+                                            isBusinessClass ? "text-indigo-700" : 
+                                            isSleeperClass ? "text-purple-700" : 
+                                            "text-emerald-700"
+                                          }`}>
+                                            {seatClass}
+                                          </span>
+                                          <span className="font-semibold text-slate-700 text-base">
+                                            {count} koltuk
+                                          </span>
+                                          <span className="ml-auto text-sm bg-slate-100 text-slate-900 px-3 py-1 rounded-md font-bold">
+                                            {time}
+                                          </span>
+                                        </div>
+                                        {trainInfo && (
+                                          <div className="text-sm text-slate-600 mt-1.5">
+                                            {trainInfo.trim()}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                
+                                // Diğer satırlar için mevcut işlemeye devam et
+                                console.log("Satır içeriği:", line);
+                                
+                                // Tren bilgisini daha okunabilir hale getirelim - YATAKLI sınıfını da ekle
+                                const match = line.match(/(BUSİNESS|EKONOMİ|YATAKLI): (\d+) koltuk \(([^\)]+)\)(.*)/);
+                                
+                                // Eğer match yoksa ham satırı görüntüle
+                                if (!match) {
+                                  console.log("Regex match başarısız oldu:", line);
+                                  return <div key={index} className="p-4 border border-slate-200 rounded-md text-base">{line}</div>;
+                                }
+                                
+                                const [, seatClass, count, time, trainInfo] = match;
+                                const isBusinessClass = seatClass === "BUSİNESS";
+                                const isSleeperClass = seatClass === "YATAKLI";
+                                
+                                return (
+                                  <div key={index} className="flex items-center py-3 px-4 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
+                                    <div className={`flex-shrink-0 mr-4 ${
+                                      isBusinessClass ? "text-indigo-600" : 
+                                      isSleeperClass ? "text-purple-600" : 
+                                      "text-emerald-600"
+                                    }`}>
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                                        {isSleeperClass ? (
+                                          <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+                                        ) : (
+                                          <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 2H8.828a2 2 0 00-1.414.586L6.293 3.707A1 1 0 015.586 4H4z" />
+                                        )}
+                                      </svg>
+                                    </div>
+                                    <div className="flex-grow min-w-0">
+                                      <div className="flex flex-wrap items-center mb-1">
+                                        <span className={`mr-3 font-medium text-base ${
+                                          isBusinessClass ? "text-indigo-700" : 
+                                          isSleeperClass ? "text-purple-700" : 
+                                          "text-emerald-700"
+                                        }`}>
+                                          {seatClass}
+                                        </span>
+                                        <span className="font-semibold text-slate-700 text-base">
+                                          {count} koltuk
+                                        </span>
+                                        <span className="ml-auto text-sm bg-slate-100 text-slate-900 px-3 py-1 rounded-md font-bold">
+                                          {time}
+                                        </span>
+                                      </div>
+                                      {trainInfo && (
+                                        <div className="text-sm text-slate-600 mt-1.5">
+                                          {trainInfo.trim()}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  )}
+                  
+                  {/* Arama durumu - isSearching ise her zaman göster */}
+                  {isSearching && (
+                    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md shadow-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                          </svg>
+                          <p className="text-blue-800 font-medium">Otomatik arama devam ediyor</p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={stopSearch}
+                          className="bg-white hover:bg-red-50 border-red-300 text-red-600 hover:text-red-700"
+                        >
+                          Durdur
+                        </Button>
+                      </div>
+                      <p className="text-sm text-blue-700 ml-7">
+                        Son kontrol: {lastCheckTime || "Henüz yok"} 
+                        <span className="ml-2 px-2 py-0.5 bg-blue-100 rounded-full text-blue-800 text-xs">
+                          {searchCountRef.current} arama yapıldı
+                        </span>
+                      </p>
+                      <div className="mt-2 text-xs text-blue-600 flex items-center ml-7">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                        Tarayıcı sekmesini kapattığınızda arama otomatik olarak durur.
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Eğer hiçbir sonuç yok ve arama yapılmıyorsa */}
+                  {!searchResult && !isSearching && (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-2 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                      </svg>
+                      <p>Tren aramak için form alanlarını doldurun</p>
+                    </div>
+                  )}
+                </>
               )}
-              
-              {!loading && !error && !searchResult && !isSearching && (
-                <div className="text-center py-6 text-muted-foreground">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-2 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                  </svg>
-                  <p>Tren aramak için form alanlarını doldurun</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          
-          {/* Son Aramalar - İyileştirilmiş Tasarım */}
-          <Card className="shadow-md overflow-hidden">
-            <CardHeader className="pb-2 bg-slate-50">
-              <CardTitle className="flex items-center text-base">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                </svg>
-                <span className="pl-0.5">Son Aramalar</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="px-4 py-2">
-                <SearchHistory onSelect={handleHistorySelect} />
-              </div>
             </CardContent>
           </Card>
           
           {/* Aktif aramalar - Card başlığı kaldırıldı çünkü component kendi başlığını içeriyor */}
-          <div className="overflow-hidden">
+          {/* <div className="overflow-hidden">
             <ActiveSearches />
-          </div>
+          </div> */}
         </div>
       </div>
       

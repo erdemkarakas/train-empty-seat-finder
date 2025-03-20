@@ -58,6 +58,14 @@ export async function checkTrainAvailability(searchRequest: SearchRequest): Prom
 // Check if there are available seats based on a preferredClass
 export function hasAvailableSeats(data: TrainData, preferredClass: string, startTime?: string, endTime?: string): SearchResult {
   try {
+    // Debug the input parameters
+    console.log("hasAvailableSeats çağrıldı:", { preferredClass, startTime, endTime });
+    
+    if (!data || !data.trainLegs || data.trainLegs.length === 0) {
+      console.log("Tren verisi geçersiz veya boş");
+      return { found: false, message: "Hiç tren bulunamadı veya veri geçersiz" };
+    }
+
     console.log("=== hasAvailableSeats başladı ===");
     console.log(`Parametreler: preferredClass=${preferredClass}, startTime=${startTime}, endTime=${endTime}`);
     
@@ -227,6 +235,9 @@ export function hasAvailableSeats(data: TrainData, preferredClass: string, start
     console.log(`Toplam bulunan uygun koltuk sayısı: ${availableSeats.length}`);
     
     if (availableSeats.length > 0) {
+      console.log(`✅ SONUÇ: Toplam bulunan uygun koltuk sayısı: ${availableSeats.length}`);
+      console.log(`DETAYLAR:`, availableSeats);
+      
       // We found available seats matching the criteria
       const details = availableSeats.map(seat => {
         // Saat formatını doğru şekilde göster
@@ -256,11 +267,14 @@ export function hasAvailableSeats(data: TrainData, preferredClass: string, start
       console.log(`✅ BAŞARILI: Boş koltuk bulundu!`);
       console.log(`Detaylar: ${details}`);
       
-      return { 
+      const result = { 
         found: true, 
         message: `Boş koltuk bulundu!`, 
         details: `- ${details}` 
       };
+      
+      console.log("Döndürülen sonuç:", JSON.stringify(result));
+      return result;
     } else {
       console.log(`❌ SONUÇ: Uygun koltuk bulunamadı`);
       return { found: false, message: "Uygun koltuk bulunamadı" };
