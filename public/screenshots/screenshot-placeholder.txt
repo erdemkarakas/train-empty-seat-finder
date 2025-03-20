@@ -1,0 +1,11 @@
+PWA için ekran görüntüleri
+
+Manifest.json dosyasında belirtilen ekran görüntüsü:
+- /screenshots/screenshot1.png
+
+Bu klasöre uygulamanın ekran görüntüsünü ekleyin. İdeal olarak:
+- 1080x1920 çözünürlüğünde (dikey mod)
+- PNG formatında
+- Uygulamanın ana özelliklerini gösteren bir ekran görüntüsü
+
+Bu ekran görüntüleri, uygulama mağazalarında ve yükleme sırasında kullanıcılara uygulamanın nasıl göründüğünü göstermek için kullanılır. 

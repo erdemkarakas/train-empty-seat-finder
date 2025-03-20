@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Lokomotif (Tren) Gövdesi -->
+  <rect x="10" y="20" width="44" height="20" rx="5" fill="#2563eb" />
+  
+  <!-- Alt kısım -->
+  <rect x="8" y="40" width="48" height="5" rx="2" fill="#1d4ed8" />
+  
+  <!-- Pencereler -->
+  <rect x="15" y="25" width="8" height="8" rx="2" fill="#dbeafe" />
+  <rect x="28" y="25" width="8" height="8" rx="2" fill="#dbeafe" />
+  <rect x="41" y="25" width="8" height="8" rx="2" fill="#dbeafe" />
+  
+  <!-- Baca -->
+  <rect x="20" y="15" width="6" height="5" fill="#1e40af" />
+  
+  <!-- Tekerlekler -->
+  <circle cx="18" cy="47" r="4" fill="#1e3a8a" />
+  <circle cx="34" cy="47" r="4" fill="#1e3a8a" />
+  <circle cx="50" cy="47" r="4" fill="#1e3a8a" />
+  
+  <!-- Iç tekerlekler -->
+  <circle cx="18" cy="47" r="2" fill="#818cf8" />
+  <circle cx="34" cy="47" r="2" fill="#818cf8" />
+  <circle cx="50" cy="47" r="2" fill="#818cf8" />
+</svg> 

@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TCDD Tren Boş Koltuk Bulucu
 
-## Getting Started
+TCDD tren hatlarında belirli bir tarih ve saat aralığında boş koltuk olup olmadığını kontrol eden ve boş koltuk bulunduğunda bildirim gönderen web uygulaması.
 
-First, run the development server:
+## Özellikler
+
+- 🚆 TCDD  tren seferlerinde boş koltuk kontrolü
+- 🔄 Otomatik periyodik arama
+- 📱 Progressive Web App (PWA) - cihazınıza yükleyebilirsiniz
+- 📶 Çevrimdışı çalışabilme
+- 🔔 Boş koltuk bulunduğunda bildirim gönderme
+- 📝 Arama geçmişini kaydetme
+- 🌙 Koyu/açık tema desteği
+- 📊 YHT hatları için gerçek zamanlı doluluk verileri
+
+## Kurulum ve Çalıştırma
+
+### Gereksinimler
+
+- Node.js 18 veya üzeri
+
+### Geliştirme Ortamında Çalıştırma
 
 ```bash
+# Bağımlılıkları yükleyin
+npm install
+
+# Geliştirme sunucusunu başlatın
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Üretim Ortamında Çalıştırma
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# Projeyi build edin
+npm run build
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Sunucuyu başlatın
+npm run start
+```
 
-## Learn More
+## PWA (Progressive Web App) Özellikleri
 
-To learn more about Next.js, take a look at the following resources:
+Bu uygulama bir PWA olarak geliştirilmiştir. Bu, aşağıdaki özellikleri sunmaktadır:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Yüklenebilirlik**: Uygulamayı mobil veya masaüstü cihazlarınıza doğrudan yükleyebilirsiniz
+- **Çevrimdışı Çalışma**: İnternet bağlantınız olmadığında bile temel işlevleri kullanabilirsiniz
+- **Mobil Deneyim**: Mobil cihazlarda doğal uygulama deneyimi sunar
+- **Güncellenebilirlik**: Uygulama otomatik olarak güncellenebilir
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### PWA Kurulumu
 
-## Deploy on Vercel
+Uygulamayı cihazınıza yüklemek için:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Uygulamayı Chrome veya Safari gibi modern bir tarayıcıda açın
+2. Adres çubuğunda veya menü kısmında "Yükle" seçeneğine tıklayın
+3. Kurulum tamamlandıktan sonra uygulamayı cihazınızın ana ekranından açabilirsiniz
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## İkonların Oluşturulması
+
+PWA için gerekli ikonları oluşturmak için:
+
+```bash
+# Ikon oluşturma scriptini çalıştırılabilir yapın
+chmod +x public/icons/generate-icons.sh
+
+# Kaynak ikon dosyasını kullanarak tüm boyutlarda ikonları oluşturun
+./public/icons/generate-icons.sh path/to/source-icon.png
+```
+
+## Lisans
+
+MIT

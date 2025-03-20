@@ -1,0 +1,26 @@
+PWA için gerekli ikonlar:
+
+1. icon-72x72.png
+2. icon-96x96.png 
+3. icon-128x128.png
+4. icon-144x144.png
+5. icon-152x152.png
+6. icon-192x192.png
+7. icon-384x384.png
+8. icon-512x512.png
+
+Bu dosyalar, PWA uyumluluğu için favicon.ico dosyasından oluşturulmalıdır. 
+Bunun için ImageMagick gibi bir görsel düzenleme aracı kullanabilirsiniz:
+
+```
+convert favicon.ico -resize 72x72 icon-72x72.png
+convert favicon.ico -resize 96x96 icon-96x96.png
+convert favicon.ico -resize 128x128 icon-128x128.png
+convert favicon.ico -resize 144x144 icon-144x144.png
+convert favicon.ico -resize 152x152 icon-152x152.png
+convert favicon.ico -resize 192x192 icon-192x192.png
+convert favicon.ico -resize 384x384 icon-384x384.png
+convert favicon.ico -resize 512x512 icon-512x512.png
+```
+
+Ya da çevrimiçi bir ikon oluşturma aracı kullanabilirsiniz. 

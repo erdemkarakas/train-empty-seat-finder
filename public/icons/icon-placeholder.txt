@@ -1,0 +1,24 @@
+====== Placeholder for PWA Icons ======
+
+The following PWA icon sizes are needed:
+- icon-72x72.png
+- icon-96x96.png
+- icon-128x128.png
+- icon-144x144.png
+- icon-152x152.png
+- icon-192x192.png
+- icon-384x384.png
+- icon-512x512.png
+
+To generate these icons:
+1. Create a high-resolution source image (at least 512x512)
+2. Use an image processing tool like ImageMagick to generate all sizes
+
+Example ImageMagick command:
+```
+convert source-icon.png -resize 144x144 public/icons/icon-144x144.png
+```
+
+Or use an online PWA icon generator:
+https://maskable.app/editor
+https://tools.crawlink.com/tools/pwa-icon-generator/ 

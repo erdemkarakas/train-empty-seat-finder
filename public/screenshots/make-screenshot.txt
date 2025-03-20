@@ -1,0 +1,31 @@
+## PWA için Ekran Görüntüsü Oluşturma Rehberi
+
+PWA'nız için ekran görüntüsü oluşturmak için aşağıdaki adımları izleyin:
+
+1. Uygulamanızın ana sayfasını açın
+2. Tarayıcı penceresi boyutunu mobil bir cihaz gibi ayarlayın (örn. Chrome DevTools'ta Mobil görünümü)
+3. Uygulamanın tüm işlevlerini gösteren bir duruma getirin
+4. Ekran görüntüsü alın:
+   - Windows: Win+Shift+S veya Snipping Tool
+   - macOS: Shift+Command+4
+   - Linux: Screenshot uygulaması veya PrtScn tuşu
+5. Görüntüyü düzenleyin (gerekirse):
+   - İdeal olarak 1080x1920 boyutunda (dikey) olmalı
+   - PNG formatında kaydedin
+6. Oluşturduğunuz görüntüyü "screenshot1.png" olarak bu klasöre kaydedin
+
+Manifest dosyasında ekran görüntüsü için aşağıdaki gibi bir tanımlama bulunmalıdır:
+
+```json
+"screenshots": [
+  {
+    "src": "/screenshots/screenshot1.png",
+    "sizes": "1080x1920",
+    "type": "image/png",
+    "platform": "narrow",
+    "label": "Ana Sayfa"
+  }
+]
+```
+
+Bu ekran görüntüleri, PWA'nız yüklenirken ve uygulama mağazalarında görünecektir. 
