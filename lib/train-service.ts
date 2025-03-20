@@ -29,16 +29,12 @@ export async function checkTrainAvailability(searchRequest: SearchRequest): Prom
     });
 
     // Axios otomatik olarak JSON parse eder, response.data'yı direkt kullanabiliriz
-    console.log("response.data", response.data);
     return response.data;
   } catch (error) {
     // Axios hata yakalama
     if (axios.isAxiosError(error)) {
-      console.error("Axios error:", error.message);
       if (error.response) {
         // Sunucu cevabı ile birlikte bir hata (4xx, 5xx durum kodları)
-        console.error("Status code:", error.response.status);
-        console.error("Response data:", error.response.data);
         throw new Error(`API isteği başarısız oldu: ${error.response.status} ${error.response.statusText}`);
       } else if (error.request) {
         // İstek yapıldı ancak cevap alınamadı
@@ -49,7 +45,6 @@ export async function checkTrainAvailability(searchRequest: SearchRequest): Prom
       }
     } else {
       // Axios hatası olmayan diğer hatalar
-      console.error("Train availability check failed:", error);
       throw error;
     }
   }
@@ -58,24 +53,15 @@ export async function checkTrainAvailability(searchRequest: SearchRequest): Prom
 // Check if there are available seats based on a preferredClass
 export function hasAvailableSeats(data: TrainData, preferredClass: string, startTime?: string, endTime?: string): SearchResult {
   try {
-    // Debug the input parameters
-    console.log("hasAvailableSeats çağrıldı:", { preferredClass, startTime, endTime });
-    
     if (!data || !data.trainLegs || data.trainLegs.length === 0) {
-      console.log("Tren verisi geçersiz veya boş");
       return { found: false, message: "Hiç tren bulunamadı veya veri geçersiz" };
     }
 
-    console.log("=== hasAvailableSeats başladı ===");
-    console.log(`Parametreler: preferredClass=${preferredClass}, startTime=${startTime}, endTime=${endTime}`);
-    
     if (!data?.trainLegs?.[0]?.trainAvailabilities) {
-      console.log("❌ Tren bilgisi bulunamadı");
       return { found: false, message: "Tren bilgisi bulunamadı" };
     }
 
     const trainAvailabilities = data.trainLegs[0].trainAvailabilities;
-    console.log(`📊 Toplam tren seferi sayısı: ${trainAvailabilities.length}`);
     
     // Mevcut koltuklar için tip tanımı
     interface AvailableSeat {
@@ -109,8 +95,7 @@ export function hasAvailableSeats(data: TrainData, preferredClass: string, start
         const minutes = parseInt(timeParts[1]) || 0;
         
         return hours * 60 + minutes;
-      } catch (e) {
-        console.error("Error parsing time:", timeStr, e);
+      } catch {
         return 0;
       }
     };
@@ -118,27 +103,20 @@ export function hasAvailableSeats(data: TrainData, preferredClass: string, start
     // Kullanıcının seçtiği saat aralığı (varsa)
     const startMinutes = startTime ? timeToMinutes(startTime) : 0;
     const endMinutes = endTime ? timeToMinutes(endTime) : 24 * 60;
-    console.log(`⏰ Saat aralığı: ${startMinutes} dakika - ${endMinutes} dakika`);
     
     // Tüm trainAvailabilities dizisini döngüye alalım
     for (let i = 0; i < trainAvailabilities.length; i++) {
       const availability = trainAvailabilities[i];
-      console.log(`\n🚂 Sefer #${i+1} inceleniyor:`);
       
       // Her bir availability içindeki trenleri kontrol edelim
       if (availability?.trains && availability.trains.length > 0) {
-        console.log(`  🚄 Tren sayısı: ${availability.trains.length}`);
         
         for (let j = 0; j < availability.trains.length; j++) {
           const train = availability.trains[j];
-          console.log(`    Tren #${j+1} kontrol ediliyor...`);
           
           // Tren kalkış saatini segments üzerinden al
           const segments = train.segments || [];
           const departureTime = segments.length > 0 ? segments[0].departureTime : null;
-          
-          // Debug departureTime format
-          console.log(`    Kalkış saati ham değer:`, departureTime, `typeof:`, typeof departureTime);
           
           // Saat bilgisi için varsayılan değer
           let trainMinutes = 0;
@@ -153,7 +131,6 @@ export function hasAvailableSeats(data: TrainData, preferredClass: string, start
               const date = new Date(timestamp);
               trainMinutes = date.getHours() * 60 + date.getMinutes();
               trainTimeForDisplay = `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
-              console.log(`    Timestamp algılandı: ${departureTime} -> ${trainTimeForDisplay}`);
             } else {
               trainMinutes = timeToMinutes(departureTime);
               trainTimeForDisplay = typeof departureTime === 'string' ? 
@@ -161,38 +138,25 @@ export function hasAvailableSeats(data: TrainData, preferredClass: string, start
                 "Bilinmeyen";
             }
             
-            const trainHours = Math.floor(trainMinutes / 60);
-            const trainMins = trainMinutes % 60;
-            console.log(`    Kalkış saati çevrilmiş: ${trainHours}:${trainMins.toString().padStart(2, '0')} (${trainMinutes} dakika)`);
-            
             if (trainMinutes < startMinutes || trainMinutes > endMinutes) {
-              console.log(`    ⏭️ Tren zaman aralığı dışında, atlanıyor (${trainTimeForDisplay} aralık dışında: ${startTime}-${endTime})`);
               continue; // Bu treni atla
             }
-            
-            console.log(`    ✅ Tren zaman aralığı içinde: ${trainTimeForDisplay}`);
-          } else {
-            console.log(`    ⚠️ Kalkış saati bilgisi bulunamadı, saat filtreleme yapılmayacak`);
           }
           
-          let hasMatchingSeats = false;
-          
           if (train?.cabinClassAvailabilities) {
-            console.log(`    👉 Kabin sınıfları bulundu, sayısı: ${train.cabinClassAvailabilities.length}`);
             
             for (const cabin of train.cabinClassAvailabilities) {
-              console.log(`      Kabin sınıfı: ${cabin.cabinClass.name}, Boş koltuk: ${cabin.availabilityCount}`);
               
               // Check if there are available seats and filter by preferred class
-              // Skip TEKERLEKLİ SANDALYE type cabins
-              if (cabin.availabilityCount > 0 && cabin.cabinClass.name !== "TEKERLEKLİ SANDALYE") {
+              // Skip TEKERLEKLİ SANDALYE and LOCA type cabins
+              if (cabin.availabilityCount > 0 && 
+                  cabin.cabinClass.name !== "TEKERLEKLİ SANDALYE" && 
+                  cabin.cabinClass.name !== "LOCA") {
                 if (
                   preferredClass === "ANY" || 
                   (preferredClass === "BUSINESS" && cabin.cabinClass.name === "BUSİNESS") ||
                   (preferredClass === "ECONOMY" && cabin.cabinClass.name === "EKONOMİ")
                 ) {
-                  console.log(`      ✅ UYGUN KOLTUK BULUNDU! Sınıf: ${cabin.cabinClass.name}, Adet: ${cabin.availabilityCount}`);
-                  
                   availableSeats.push({
                     class: cabin.cabinClass.name,
                     count: cabin.availabilityCount,
@@ -202,42 +166,15 @@ export function hasAvailableSeats(data: TrainData, preferredClass: string, start
                     trainNumber: train.trainNumber || "Bilinmeyen",
                     trainRoute: availability.routeInfo || "Bilinmeyen"
                   });
-                  
-                  hasMatchingSeats = true;
-                } else {
-                  console.log(`      ❌ Boş koltuk var ama tercih edilen sınıfta değil. İstenen: ${preferredClass}, Bulunan: ${cabin.cabinClass.name}`);
-                }
-              } else {
-                if (cabin.availabilityCount === 0) {
-                  console.log(`      ❌ Bu kabinde boş koltuk yok`);
-                }
-                if (cabin.cabinClass.name === "TEKERLEKLİ SANDALYE") {
-                  console.log(`      ❌ TEKERLEKLİ SANDALYE tipi kabin, atlanıyor`);
                 }
               }
             }
-          } else {
-            console.log(`    ❌ Bu trende kabin bilgisi bulunamadı`);
-          }
-          
-          if (hasMatchingSeats) {
-            console.log(`    ✅ Bu trende uygun koltuklar bulundu!`);
-          } else {
-            console.log(`    ❌ Bu trende uygun koltuk bulunamadı`);
           }
         }
-      } else {
-        console.log(`  ❌ Bu seferde tren bilgisi bulunamadı`);
       }
     }
     
-    console.log(`\n=== SONUÇ ===`);
-    console.log(`Toplam bulunan uygun koltuk sayısı: ${availableSeats.length}`);
-    
     if (availableSeats.length > 0) {
-      console.log(`✅ SONUÇ: Toplam bulunan uygun koltuk sayısı: ${availableSeats.length}`);
-      console.log(`DETAYLAR:`, availableSeats);
-      
       // We found available seats matching the criteria
       const details = availableSeats.map(seat => {
         // Saat formatını doğru şekilde göster
@@ -264,23 +201,17 @@ export function hasAvailableSeats(data: TrainData, preferredClass: string, start
         return `${seat.class}: ${seat.count} koltuk (${timeDisplay}) ${trainDetails}`.trim();
       }).join("\n- ");
       
-      console.log(`✅ BAŞARILI: Boş koltuk bulundu!`);
-      console.log(`Detaylar: ${details}`);
-      
       const result = { 
         found: true, 
         message: `Boş koltuk bulundu!`, 
         details: `- ${details}` 
       };
       
-      console.log("Döndürülen sonuç:", JSON.stringify(result));
       return result;
     } else {
-      console.log(`❌ SONUÇ: Uygun koltuk bulunamadı`);
       return { found: false, message: "Uygun koltuk bulunamadı" };
     }
-  } catch (error) {
-    console.error("❌ HATA: Veri işlenirken hata oluştu:", error);
+  } catch {
     return { found: false, message: "Veri analiz hatası" };
   }
 }
@@ -296,7 +227,6 @@ export const sendTelegramNotification = async (
     const chatId = localStorage.getItem("telegramChatId");
     
     if (!botToken || !chatId) {
-      console.warn("Telegram bildirimi gönderilemiyor: API key veya Chat ID bulunamadı");
       return false;
     }
     
@@ -328,19 +258,15 @@ ${result.details ? result.details.replace(/\n/g, '\n') : result.message}
       clearTimeout(timeoutId);
       
       if (response.status === 200 && response.data.ok) {
-        console.log("Telegram bildirimi başarıyla gönderildi");
         return true;
       } else {
-        console.error("Telegram bildirimi gönderilirken hata:", response.data);
         return false;
       }
-    } catch (error) {
+    } catch {
       clearTimeout(timeoutId);
-      console.error("Telegram bildirimi gönderilirken ağ hatası:", error);
       return false;
     }
-  } catch (error) {
-    console.error("Telegram bildirimi gönderilemiyor:", error);
+  } catch {
     return false;
   }
 };

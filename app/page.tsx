@@ -36,7 +36,6 @@ export default function Home() {
   const searchCountRef = useRef(0);
   const searchFormRef = useRef<SearchFormRef>(null);
   const [telegramConfigured, setTelegramConfigured] = useState(false);
-  const [userId, setUserId] = useState<string>("");
   const currentSearch = useRef<SearchFormData | null>(null);
   
   // PWA kurulum durumunu takip etmek için state
@@ -59,8 +58,6 @@ export default function Home() {
       id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
       localStorage.setItem("userId", id);
     }
-    setUserId(id);
-    console.log("Mevcut kullanıcı ID:", id);
   }, []);
   
   // PWA kurulum teşvikini kontrol et
@@ -79,7 +76,6 @@ export default function Home() {
       // Uygulamanın kurulduğunu kaydet
       setIsPWAInstalled(true);
       deferredPromptRef.current = null;
-      console.log('PWA başarıyla kuruldu');
     };
     
     // Event listener'ları ekle
@@ -121,10 +117,7 @@ export default function Home() {
     deferredPromptRef.current.prompt();
     
     // Kullanıcının yanıtını bekle
-    const { outcome } = await deferredPromptRef.current.userChoice;
-    
-    // Sonucu logla
-    console.log(`Kullanıcı PWA kurulumu: ${outcome}`);
+    await deferredPromptRef.current.userChoice;
     
     // Teşviki temizle
     deferredPromptRef.current = null;
@@ -191,8 +184,6 @@ export default function Home() {
   }, [searchResult]);
 
   const stopSearch = () => {
-    console.log(`[stopSearch] Kullanıcı (${userId}) için arama durduruluyor...`, { hasInterval: !!searchInterval });
-    
     // Always update UI state even if there's no interval
     setIsSearching(false);
     
@@ -200,7 +191,6 @@ export default function Home() {
     // setSearchResult(null);
     
     if (searchInterval) {
-      console.log("[stopSearch] Clearing interval");
       clearInterval(searchInterval);
       setSearchInterval(null);
     }
@@ -222,8 +212,6 @@ export default function Home() {
       setLoading(true);
       setIsSearching(true);
       
-      console.log("Arama başlatılıyor, loading=true");
-      
       // Arama formunu referansta sakla
       currentSearch.current = formData;
       
@@ -238,7 +226,6 @@ export default function Home() {
       
       // Eğer periyodik arama talep edildiyse başlat
       if (formData.searchInterval && formData.searchInterval !== "0") {
-        console.log(`[ClientSearch] Kullanıcı ID: ${userId} için periyodik arama başlatılıyor`);
         startPeriodicSearch(searchRequest, formData);
       } else {
         // Periyodik arama değilse, arama durumunu güncelle
@@ -273,11 +260,9 @@ export default function Home() {
       
       // Always set loading to false when results are processed, regardless of success
       setLoading(false);
-      console.log("Yükleme durumu false olarak ayarlandı");
       
       // Set the search result first before potentially stopping the search
       setSearchResult(result);
-      console.log("Arama sonuçları state'e ayarlandı:", result);
       
       // If seats are found, send telegram notification but DON'T stop searching
       if (result.found) {
@@ -293,9 +278,6 @@ export default function Home() {
         } catch (error) {
           console.error("Telegram bildirimi gönderilirken hata oluştu:", error);
         }
-        
-        // Koltuk bulunduğunda arama otomatik olarak durdurulmuyor
-        console.log("Koltuk bulundu! Fakat arama devam ediyor...");
       }
     } catch (err) {
       console.error("Search error:", err);
@@ -306,14 +288,11 @@ export default function Home() {
 
   // Client-side periyodik arama fonksiyonu
   const startPeriodicSearch = (searchRequest: SearchRequest, formData: SearchFormData) => {
-    console.log(`[ClientSearch] Starting periodic search every ${formData.searchInterval} minutes`);
-    
     // Seçilen aralığı dakikadan milisaniyeye çevirelim
     const intervalMs = parseInt(formData.searchInterval) * 60 * 1000;
     
     // Yeni bir interval oluşturup sonraki aramaları planlayalım
     const newInterval = setInterval(async () => {
-      console.log(`[ClientSearch] Performing periodic search (interval: ${formData.searchInterval} min)`);
       await performSearch(searchRequest, formData);
     }, intervalMs);
     
@@ -402,11 +381,11 @@ export default function Home() {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       const registerServiceWorker = () => {
         navigator.serviceWorker.register('/sw.js').then(
-          function(registration) {
-            console.log('Service Worker registration successful with scope: ', registration.scope);
+          function() {
+            // Service Worker registration successful
           },
-          function(err) {
-            console.log('Service Worker registration failed: ', err);
+          function() {
+            // Service Worker registration failed
           }
         );
       };
@@ -474,7 +453,7 @@ export default function Home() {
           {/* Arama kartı */}
           <Card className="shadow-md">
             <CardHeader className="pb-2 bg-slate-100 rounded-t-xl">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
                   <CardTitle className="text-xl">Tren Bileti Ara</CardTitle>
                   <CardDescription className="mt-1 text-sm">
@@ -482,14 +461,14 @@ export default function Home() {
                   </CardDescription>
                 </div>
                 {telegramConfigured ? (
-                  <span className="bg-green-100 text-green-800 text-xs px-2.5 py-1 rounded-full flex items-center">
+                  <span className="bg-green-100 text-green-800 text-xs px-2.5 py-1 rounded-full flex items-center self-start sm:self-auto w-fit">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
                     Telegram Hazır
                   </span>
                 ) : (
-                  <span className="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-full flex items-center">
+                  <span className="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-full flex items-center self-start sm:self-auto w-fit">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
@@ -635,12 +614,11 @@ export default function Home() {
                                   
                                   // İlk satırın başındaki "- " varsa temizle
                                   const cleanLine = line.startsWith("- ") ? line.substring(2) : line;
-                                  console.log("İlk satır içeriği:", cleanLine);
+
                                   
                                   // Tren bilgisini kontrol et - YATAKLI sınıfını da ekle
                                   const match = cleanLine.match(/(BUSİNESS|EKONOMİ|YATAKLI): (\d+) koltuk \(([^\)]+)\)(.*)/);
                                   if (!match) {
-                                    console.log("İlk satır regex match başarısız:", cleanLine);
                                     return cleanLine ? (
                                       <div key={index} className="p-4 border border-slate-200 rounded-md text-base">{cleanLine}</div>
                                     ) : null;
@@ -691,15 +669,13 @@ export default function Home() {
                                   );
                                 }
                                 
-                                // Diğer satırlar için mevcut işlemeye devam et
-                                console.log("Satır içeriği:", line);
+
                                 
                                 // Tren bilgisini daha okunabilir hale getirelim - YATAKLI sınıfını da ekle
                                 const match = line.match(/(BUSİNESS|EKONOMİ|YATAKLI): (\d+) koltuk \(([^\)]+)\)(.*)/);
                                 
                                 // Eğer match yoksa ham satırı görüntüle
                                 if (!match) {
-                                  console.log("Regex match başarısız oldu:", line);
                                   return <div key={index} className="p-4 border border-slate-200 rounded-md text-base">{line}</div>;
                                 }
                                 

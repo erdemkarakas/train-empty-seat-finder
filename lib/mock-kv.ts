@@ -1,95 +1,105 @@
 // Mock implementation of Vercel KV for local development
 import { StoredSearch } from './types';
 
-// Define a type that can handle all supported KV value types
-type KVValue = StoredSearch | string | number | boolean | null | { [key: string]: KVValue };
+// Define the allowed value types for the KV store
+type KVValueType = StoredSearch | string | number | boolean | null | Record<string, unknown>;
 
-class MockKV {
-  private storage: Map<string, KVValue> = new Map();
+export class MockKV {
+  private storage: Map<string, { value: KVValueType, expires?: number }>;
   
   constructor() {
-    // Add sample data for development
-    this.addSampleData();
-    
-    // Log all sample data keys for debugging
-    console.log('[MockKV] Initialized with keys:', [...this.storage.keys()]);
+    this.storage = new Map();
+    this.loadFromLocalStorage();
+    this.addSampleSearchData();
   }
   
-  // Add sample data for testing
-  private addSampleData() {
-    const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+  private loadFromLocalStorage() {
+    if (typeof window === 'undefined') return;
     
-    // Sample search data
-    const sampleSearch: StoredSearch = {
-      params: {
-        departureStation: {
-          id: "100",
-          name: "Ankara Gar"
-        },
-        arrivalStation: {
-          id: "200",
-          name: "İstanbul Söğütlüçeşme"
-        },
-        departureDate: tomorrow.toISOString(),
-        startTime: "08:00",
-        endTime: "20:00",
-        preferredClass: "ANY"
-      },
-      telegram: {
-        apiKey: "sample-api-key",
-        chatId: "sample-chat-id"
-      },
-      startedAt: now.toISOString(),
-      expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString()
-    };
-    
-    // Add sample search to storage
-    this.storage.set("search:test-user-id:sample-search-id", sampleSearch);
-    console.log('[MockKV] Added sample search data for testing');
+    try {
+      const storedData = localStorage.getItem('mockKV');
+      if (storedData) {
+        const parsed = JSON.parse(storedData);
+        Object.keys(parsed).forEach(key => {
+          this.storage.set(key, parsed[key]);
+        });
+      }
+    } catch {
+      // Silent error - just use empty storage
+    }
   }
   
-  async set(key: string, value: KVValue, options?: { ex?: number }): Promise<string> {
-    this.storage.set(key, value);
+  private saveToLocalStorage() {
+    if (typeof window === 'undefined') return;
     
-    // If expiration is set, schedule deletion
+    try {
+      const data: Record<string, unknown> = {};
+      this.storage.forEach((value, key) => {
+        data[key] = value;
+      });
+      localStorage.setItem('mockKV', JSON.stringify(data));
+    } catch {
+      // Silent error - just continue
+    }
+  }
+  
+  private addSampleSearchData() {
+    // Add some sample data for testing if empty
+    if (this.storage.size === 0) {
+      // Add sample data here if needed
+    }
+  }
+  
+  async set(key: string, value: KVValueType, options?: { ex?: number }): Promise<void> {
+    const item: { value: KVValueType, expires?: number } = { value };
+    
     if (options?.ex) {
-      const expiryMs = options.ex * 1000;
-      setTimeout(() => {
-        this.storage.delete(key);
-        console.log(`[MockKV] Auto-expired: ${key}`);
-      }, expiryMs);
+      item.expires = Date.now() + options.ex * 1000;
     }
     
-    console.log(`[MockKV] Set: ${key}`);
-    return 'OK';
+    this.storage.set(key, item);
+    this.saveToLocalStorage();
   }
   
-  async get(key: string): Promise<KVValue | null> {
-    const value = this.storage.get(key);
-    console.log(`[MockKV] Get: ${key}`);
-    return value || null;
+  async get(key: string): Promise<KVValueType | null> {
+    const item = this.storage.get(key);
+    
+    if (!item) return null;
+    
+    // Check if expired
+    if (item.expires && item.expires < Date.now()) {
+      this.storage.delete(key);
+      this.saveToLocalStorage();
+      return null;
+    }
+    
+    return item.value;
   }
   
-  async del(key: string): Promise<number> {
-    const deleted = this.storage.delete(key);
-    console.log(`[MockKV] Delete: ${key}`);
-    return deleted ? 1 : 0;
+  async del(key: string): Promise<void> {
+    this.storage.delete(key);
+    this.saveToLocalStorage();
   }
   
   async keys(pattern: string): Promise<string[]> {
-    // Simple pattern matching for 'search:*' type patterns
-    const regex = new RegExp(pattern.replace(/\*/g, '.*'));
-    const matchingKeys = [...this.storage.keys()].filter(key => regex.test(key));
-    console.log(`[MockKV] Keys with pattern: ${pattern}, found: ${matchingKeys.length}`, matchingKeys);
+    // Simple pattern matching for keys (supports only * wildcard)
+    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+    const matchingKeys = Array.from(this.storage.keys()).filter(key => regex.test(key));
+    
     return matchingKeys;
   }
   
   async exists(key: string): Promise<number> {
-    const exists = this.storage.has(key);
-    console.log(`[MockKV] Exists: ${key}`);
-    return exists ? 1 : 0;
+    return this.storage.has(key) ? 1 : 0;
+  }
+  
+  // For testing and debugging
+  dump(): Record<string, KVValueType> {
+    const result: Record<string, KVValueType> = {};
+    this.storage.forEach((item, key) => {
+      result[key] = item.value;
+    });
+    return result;
   }
 }
 
