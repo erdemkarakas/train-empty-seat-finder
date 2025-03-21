@@ -1,0 +1,17 @@
+{
+    "name": "train-search-worker",
+    "version": "1.0.0",
+    "description": "TCDD tren boş koltuk arama Cloudflare Worker",
+    "main": "dist/index.js",
+    "scripts": {
+        "dev": "wrangler dev",
+        "deploy": "wrangler deploy"
+    },
+    "author": "",
+    "license": "MIT",
+    "devDependencies": {
+        "@cloudflare/workers-types": "^4.20250320.0",
+        "typescript": "^5.0.4",
+        "wrangler": "^3.0.0"
+    }
+}

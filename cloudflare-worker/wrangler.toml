@@ -1,0 +1,12 @@
+name = "train-search-worker"
+main = "src/index.ts"
+compatibility_date = "2023-05-18"
+
+# KV Namespace için yapılandırma
+kv_namespaces = [
+  { binding = "TRAIN_SEARCH_KV", id = "fa0c803b128e4772a5d996fb393f01bd" }
+]
+
+# 2 dakikada bir çalışacak cron job
+[triggers]
+crons = ["*/2 * * * *"] 
