@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import NetworkStatus from "@/components/network-status";
-
+import { Analytics } from '@vercel/analytics/next';
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -79,6 +79,7 @@ export default function RootLayout({
       >
         <NetworkStatus />
         {children}
+        <Analytics />
       </body>
     </html>
   );
