@@ -63,23 +63,21 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
     if (typeof window !== 'undefined') {
       const apiKey = localStorage.getItem("telegramApiKey");
       const chatId = localStorage.getItem("telegramChatId");
-      
       setTelegramApiKey(apiKey);
       setTelegramChatId(chatId);
       setTelegramConfigured(!!(apiKey && chatId));
-      
       // Listen for changes in Telegram config
       const handleStorageChange = (e: StorageEvent) => {
         if (e.key === "telegramApiKey" || e.key === "telegramChatId") {
           const newApiKey = localStorage.getItem("telegramApiKey");
           const newChatId = localStorage.getItem("telegramChatId");
-          
+
           setTelegramApiKey(newApiKey);
           setTelegramChatId(newChatId);
           setTelegramConfigured(!!(newApiKey && newChatId));
         }
       };
-      
+
       window.addEventListener("storage", handleStorageChange);
       return () => {
         window.removeEventListener("storage", handleStorageChange);
@@ -116,16 +114,16 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
       if (data.departureStation) form.setValue('departureStation', data.departureStation);
       if (data.arrivalStation) form.setValue('arrivalStation', data.arrivalStation);
       if (data.departureDate) form.setValue('departureDate', data.departureDate);
-      
+
       // Handle time range validation when resetting
       if (data.startTime) form.setValue('startTime', data.startTime);
       if (data.endTime) form.setValue('endTime', data.endTime);
-      
+
       // Validate time range
       if (data.startTime && data.endTime) {
         validateTimeRange(data.startTime, data.endTime);
       }
-      
+
       if (data.preferredClass) form.setValue('preferredClass', data.preferredClass);
       if (data.searchInterval) form.setValue('searchInterval', data.searchInterval);
     },
@@ -152,7 +150,7 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
   const validateTimeRange = (startTime: string, endTime: string): boolean => {
     const startMinutes = timeStringToMinutes(startTime);
     const endMinutes = timeStringToMinutes(endTime);
-    
+
     if (startMinutes >= endMinutes) {
       setTimeError("Başlangıç saati bitiş saatinden önce olmalıdır!");
       return false;
@@ -165,11 +163,11 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
   // Handle time range changes
   const handleTimeChange = (field: 'startTime' | 'endTime', value: string) => {
     form.setValue(field, value);
-    
+
     // Get current values
     const startTime = field === 'startTime' ? value : form.getValues('startTime');
     const endTime = field === 'endTime' ? value : form.getValues('endTime');
-    
+
     // Validate time range
     validateTimeRange(startTime, endTime);
   };
@@ -177,7 +175,7 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
   const handleStationSearch = (value: string) => {
     setStationSearchValue(value);
     if (value.length > 1) {
-      const filtered = Object.values(stations).filter(station => 
+      const filtered = Object.values(stations).filter(station =>
         station.name.toLowerCase().includes(value.toLowerCase())
       ).slice(0, 10);
       setFilteredStations(filtered);
@@ -196,17 +194,16 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
   const onSubmit = (data: SearchFormData) => {
     // Validate that stations are selected
     if (!data.departureStation || !data.departureStation.id) {
-      form.setError("departureStation", { 
-        type: "manual", 
-        message: "Lütfen kalkış istasyonu seçin" 
+      form.setError("departureStation", {
+        type: "manual",
+        message: "Lütfen kalkış istasyonu seçin"
       });
       return;
     }
-    
     if (!data.arrivalStation || !data.arrivalStation.id) {
-      form.setError("arrivalStation", { 
-        type: "manual", 
-        message: "Lütfen varış istasyonu seçin" 
+      form.setError("arrivalStation", {
+        type: "manual",
+        message: "Lütfen varış istasyonu seçin"
       });
       return;
     }
@@ -218,7 +215,6 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
         ...data,
         // backgroundSearch: backgroundSearch
       };
-      
       // Ensure all required ActiveSearch properties are included
       setSearches((prev) => [
         {
@@ -441,8 +437,8 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Başlangıç Saati</FormLabel>
-                  <Select 
-                    onValueChange={(value) => handleTimeChange('startTime', value)} 
+                  <Select
+                    onValueChange={(value) => handleTimeChange('startTime', value)}
                     value={field.value}
                   >
                     <FormControl>
@@ -469,7 +465,7 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Bitiş Saati</FormLabel>
-                  <Select 
+                  <Select
                     onValueChange={(value) => handleTimeChange('endTime', value)}
                     value={field.value}
                   >
@@ -491,7 +487,7 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
               )}
             />
           </div>
-          
+
           {timeError && (
             <div className="text-red-500 text-sm mt-1 -mb-4">
               {timeError}
@@ -563,7 +559,7 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
                 </span>
               )}
             </div>
-            
+
             <div className="ml-10 mt-2">
               Bilgi metni buraya gelecek
             </div>
@@ -572,7 +568,15 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
         </div>
 
         <Button type="submit" className="w-full my-4" disabled={loading || disabled}>
-          {loading ? "Aranıyor..." : "Koltuk Ara"}
+          <div className="flex items-center justify-center">
+            {loading && (
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
+            {loading ? "Aranıyor..." : "Koltuk Ara"}
+          </div>
         </Button>
       </form>
     </Form>
@@ -581,4 +585,4 @@ const SearchForm = forwardRef<SearchFormRef, SearchFormProps>(({ onSearch, loadi
 
 SearchForm.displayName = "SearchForm";
 
-export default SearchForm; 
+export default SearchForm;
