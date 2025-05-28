@@ -39,12 +39,12 @@ export default function Home() {
   const currentSearch = useRef<SearchFormData | null>(null);
 
   // PWA kurulum durumunu takip etmek için state
-  const [isPWAInstalled, setIsPWAInstalled] = useState<boolean>(false);
+  // const [isPWAInstalled, setIsPWAInstalled] = useState<boolean>(false);
 
   const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
 
   // Mobil cihaz kontrolü için state
-  const [isMobile, setIsMobile] = useState(false);
+  // const [isMobile, setIsMobile] = useState(false);
 
   // Kullanıcı ID ve yerel depolama için kullanıcı bilgisi
   useEffect(() => {
@@ -69,12 +69,12 @@ export default function Home() {
       // Daha sonra kullanmak için teşviki sakla
       deferredPromptRef.current = e as BeforeInstallPromptEvent;
       // Kurulum butonunu göster
-      setIsPWAInstalled(false);
+      // setIsPWAInstalled(false);
     };
 
     const handleAppInstalled = () => {
       // Uygulamanın kurulduğunu kaydet
-      setIsPWAInstalled(true);
+      // setIsPWAInstalled(true);
       deferredPromptRef.current = null;
     };
 
@@ -93,7 +93,7 @@ export default function Home() {
   useEffect(() => {
     const checkMobile = () => {
       // 768px'den küçük ekranları mobil olarak kabul et (Tailwind'in md breakpoint'i)
-      setIsMobile(window.innerWidth < 768);
+      // setIsMobile(window.innerWidth < 768);
     };
 
     // İlk yükleme anında kontrol et
@@ -107,22 +107,22 @@ export default function Home() {
     };
   }, []);
 
-  // PWA kurulum fonksiyonu
-  const installPWA = async () => {
-    if (!deferredPromptRef.current) {
-      return;
-    }
+  // // PWA kurulum fonksiyonu
+  // const installPWA = async () => {
+  //   if (!deferredPromptRef.current) {
+  //     return;
+  //   }
 
-    // Kurulum teşvikini göster
-    deferredPromptRef.current.prompt();
+  //   // Kurulum teşvikini göster
+  //   deferredPromptRef.current.prompt();
 
-    // Kullanıcının yanıtını bekle
-    await deferredPromptRef.current.userChoice;
+  //   // Kullanıcının yanıtını bekle
+  //   await deferredPromptRef.current.userChoice;
 
-    // Teşviki temizle
-    deferredPromptRef.current = null;
-    setIsPWAInstalled(true);
-  };
+  //   // Teşviki temizle
+  //   deferredPromptRef.current = null;
+  //   setIsPWAInstalled(true);
+  // };
 
   // Check if Telegram is configured
   useEffect(() => {
@@ -416,7 +416,7 @@ export default function Home() {
     const checkPWAInstalled = () => {
       if (window.matchMedia('(display-mode: standalone)').matches ||
         (window.navigator as SafariNavigator).standalone === true) {
-        setIsPWAInstalled(true);
+        // setIsPWAInstalled(true);
       }
     };
 
@@ -578,23 +578,27 @@ export default function Home() {
                       : 'bg-yellow-50 border-yellow-200'
                       }`}>
                       <div className="flex flex-col space-y-2">
-                        <div className="flex items-center">
+                        <div className="flex items-start">
                           <div className={`${searchResult.found ? 'text-green-600' : 'text-yellow-600'
                             }`}>
                             {searchResult.found ? (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 mt-[2px]" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                               </svg>
                             ) : (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 mt-[2px]" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                               </svg>
                             )}
                           </div>
+                          <div className="flex flex-col flex-1">
                           <p className={`font-medium ${searchResult.found ? 'text-green-800' : 'text-yellow-800'
                             }`}>
                             {searchResult.message}
                           </p>
+
+                          {!searchResult.found && <p className="font-light text-xs text-yellow-700 mt-2"> {searchResult.description} </p>}
+                          </div>
                         </div>
 
                         {searchResult.found && currentSearch.current && (
@@ -813,7 +817,7 @@ export default function Home() {
       </div>
 
       {/* PWA Kurulum Banner - Sadece mobil cihazlarda göster */}
-      {!isPWAInstalled && isMobile && (
+      {/* {!isPWAInstalled && isMobile && (
         <div className="fixed inset-x-0 bottom-0 p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg z-50">
           <div className="container max-w-5xl mx-auto flex items-center justify-between">
             <div className="flex items-center">
@@ -832,7 +836,7 @@ export default function Home() {
             </Button>
           </div>
         </div>
-      )}
+      )} */}
       <footer className="w-full text-[11px] text-center text-gray-400 mt-10 mb-2 select-none flex flex-col items-center gap-1">
         <span className="inline-flex items-center gap-1">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>

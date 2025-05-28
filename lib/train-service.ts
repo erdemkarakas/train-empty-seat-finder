@@ -209,7 +209,7 @@ export function hasAvailableSeats(data: TrainData, preferredClass: string, start
       
       return result;
     } else {
-      return { found: false, message: "Uygun koltuk bulunamadı" };
+      return { found: false, message: "Uygun koltuk bulunamadı", description: "Tarayıcıyıcınızı açık bıraktığınız sürece koltuk aramaya devam edeceksiniz.Telegram kurulumu yaparsanız koltuk bulunduğunda telefonunuzda bildirim alacaksınız." };
     }
   } catch {
     return { found: false, message: "Veri analiz hatası" };

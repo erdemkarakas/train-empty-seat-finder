@@ -54,6 +54,7 @@ export interface SearchResult {
   found: boolean;
   message: string;
   details?: string;
+  description?: string;
 }
 
 // API response cabin class
