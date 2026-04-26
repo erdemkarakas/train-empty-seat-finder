@@ -29,9 +29,13 @@ interface ActiveSearch {
   telegramEnabled: boolean;
 }
 
-const timeOptions = Array.from({ length: 24 }, (_, i) => {
-  const hour = i.toString().padStart(2, "0");
-  return { value: `${hour}:00`, label: `${hour}:00` };
+// Generate time options for every 15 minutes (00, 15, 30, 45)
+const timeOptions = Array.from({ length: 96 }, (_, i) => {
+  const hour = Math.floor(i / 4);
+  const minute = (i % 4) * 15;
+  const hourStr = hour.toString().padStart(2, "0");
+  const minuteStr = minute.toString().padStart(2, "0");
+  return { value: `${hourStr}:${minuteStr}`, label: `${hourStr}:${minuteStr}` };
 });
 
 type SearchFormProps = {
