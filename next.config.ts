@@ -21,6 +21,8 @@ const nextConfig: NextConfig = withPWA(pwaConfig)({
   experimental: {
     // turbo özelliğini kaldırdık
   },
+  // impit native binding'i (napi) sunucu tarafında bundle edilmemeli
+  serverExternalPackages: ['impit'],
   // Webpack yapılandırmasını koruyalım
   webpack: (config) => {
     return config;

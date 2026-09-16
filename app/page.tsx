@@ -10,7 +10,7 @@ import SettingsDialog from "@/components/settings-dialog";
 import { checkTrainAvailability, hasAvailableSeats, sendTelegramNotification } from "@/lib/train-service";
 import { SearchFormData, SearchRequest, SearchResult, SearchInfo, SearchHistoryItem } from "@/lib/types";
 import { stations } from "@/app/destination";
-import { createSearchRequest } from "@/lib/server-service";
+import { createSearchRequest } from "@/lib/search-request";
 // import { startServerSearch } from "@/lib/server-service";
 import { Button } from "@/components/ui/button";
 // import { generateUniqueId } from "@/lib/utils";

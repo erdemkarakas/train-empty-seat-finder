@@ -17,24 +17,21 @@ export interface SearchFormData {
   backgroundSearch?: boolean;
 }
 
-// Search request type
+// Search request type — matches e-bilet train-availability body
 export interface SearchRequest {
-  departureStationId: string | number;
-  arrivalStationId: string | number;
-  departureDate: string;
-  searchRoutes?: Array<{
+  searchRoutes: Array<{
     departureStationId: number;
     departureStationName: string;
     arrivalStationId: number;
     arrivalStationName: string;
     departureDate: string;
   }>;
-  passengerTypeCounts?: Array<{
+  passengerTypeCounts: Array<{
     id: number;
     count: number;
   }>;
-  searchReservation?: boolean;
-  searchType?: string;
+  searchReservation: boolean;
+  blTrainTypes: string[];
 }
 
 // Search history item type
@@ -73,21 +70,49 @@ export interface CabinClassAvailability {
   availabilityCount: number;
 }
 
-// API response train structure
+export interface FareCabinAvailability {
+  cabinClass: CabinClass;
+  availabilityCount: number;
+}
+
+export interface FareInfo {
+  cabinClasses?: FareCabinAvailability[];
+}
+
+export interface CarPricing {
+  availability: number;
+}
+
+export interface CarCabinAvailability {
+  cabinClass: CabinClass;
+  availability: number;
+  pricingList: CarPricing[];
+}
+
+export interface TrainCar {
+  availabilities?: CarCabinAvailability[];
+}
+
+export interface Train {
+  name?: string;
+  number?: string;
+  trainNumber?: string;
+  cabinClassAvailabilities?: CabinClassAvailability[];
+  availableFareInfo?: FareInfo[];
+  cars?: TrainCar[];
+  segments?: Array<{
+    departureTime?: string | number;
+  }>;
+}
+
+export interface TrainAvailability {
+  routeInfo?: string;
+  trains?: Train[];
+}
+
 export interface TrainData {
   trainLegs?: Array<{
-    trainAvailabilities?: Array<{
-      departureTime?: string;
-      departureDateTime?: string;
-      routeInfo?: string;
-      trains?: Array<{
-        trainNumber?: string;
-        cabinClassAvailabilities?: CabinClassAvailability[];
-        segments?: Array<{
-          departureTime?: string;
-        }>;
-      }>;
-    }>;
+    trainAvailabilities?: TrainAvailability[];
   }>;
 }
 

@@ -1,5 +1,9 @@
 import { kv } from '@/lib/kv-provider';
 import { SearchFormData, SearchRequest, StoredSearch } from './types';
+import {
+  createSearchRequest as buildSearchRequest,
+  formatDepartureDateForAPI as buildDepartureDate,
+} from './search-request';
 
 /**
  * Sunucu tarafında bir tren araması başlatır ve Vercel KV'de saklar
@@ -120,42 +124,16 @@ function generateSearchId(): string {
 }
 
 /**
- * TCDD API isteği için SearchRequest oluşturur
+ * TCDD API isteği için SearchRequest oluşturur.
+ * Gerçek e-bilet gövdesiyle birebir eşleşir (lib/search-request.ts).
  */
 export function createSearchRequest(formData: SearchFormData): SearchRequest {
-  const departureStationId = parseInt(formData.departureStation.id.split('-')[1]);
-  const arrivalStationId = parseInt(formData.arrivalStation.id.split('-')[1]);
-  const departureDate = formatDepartureDateForAPI(formData.departureDate);
-  
-  return {
-    departureStationId: departureStationId,
-    arrivalStationId: arrivalStationId,
-    departureDate: departureDate,
-    searchRoutes: [{
-      departureStationId: departureStationId,
-      departureStationName: formData.departureStation.name.split(' , ')[0],
-      arrivalStationId: arrivalStationId,
-      arrivalStationName: formData.arrivalStation.name.split(' , ')[0],
-      departureDate: departureDate
-    }],
-    passengerTypeCounts: [
-      { id: 0, count: 1 }
-    ],
-    searchReservation: false,
-    searchType: "DOMESTIC"
-  };
+  return buildSearchRequest(formData);
 }
 
 /**
  * Helper function to format departure date for API (one day earlier at 21:00)
  */
 export function formatDepartureDateForAPI(selectedDate: Date): string {
-  const prevDay = new Date(selectedDate);
-  prevDay.setDate(prevDay.getDate() - 1); // Bir gün öncesini al
-  
-  // Tarihi TR formatında al ve "-" ile değiştir (DD-MM-YYYY)
-  const dateStr = prevDay.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\./g, '-');
-  
-  // Saati 21:00 olarak ayarla - TCDD sitesi ile uyumlu
-  return `${dateStr} 21:00:00`;
+  return buildDepartureDate(selectedDate);
 } 
