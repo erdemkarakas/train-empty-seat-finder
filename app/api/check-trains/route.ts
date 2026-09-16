@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { kv } from '@/lib/kv-provider';
-import { checkTrainAvailability, hasAvailableSeats } from '@/lib/train-service';
+import { fetchTrainAvailability } from '@/lib/tcdd-client';
+import { hasAvailableSeats } from '@/lib/seat-availability';
 import { createSearchRequestFromStations } from '@/lib/search-request';
 import { SearchResult, StoredSearch } from '@/lib/types';
 import axios from 'axios';
+
+// impit native binding kullanır: Node.js runtime gerekli.
+export const runtime = 'nodejs';
 
 // Cron job çalıştığında keyleri açığa çıkarmadan sorgular yapacağız
 // Client-side localStorage olmadığı için custom bir sendTelegramNotification implementasyonu
@@ -96,8 +100,8 @@ export async function GET() {
           departureDate: searchParams.departureDate,
         });
 
-        // TCDD API sorgusu
-        const data = await checkTrainAvailability(searchRequest);
+        // TCDD API sorgusu (sunucu: impit)
+        const data = await fetchTrainAvailability(searchRequest);
         
         // Boş koltuk kontrolü
         const result = hasAvailableSeats(

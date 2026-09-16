@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
-import { checkTrainAvailability, hasAvailableSeats } from '@/lib/train-service';
+import { fetchTrainAvailability } from '@/lib/tcdd-client';
+import { hasAvailableSeats } from '@/lib/seat-availability';
+
+// impit native binding kullanır: Node.js runtime gerekli.
+export const runtime = 'nodejs';
 
 /**
  * Bu API endpoint'i, Cloudflare Worker tarafından kullanılacak.
@@ -17,8 +21,8 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
     
-    // TCDD API sorgusu
-    const data = await checkTrainAvailability(searchRequest);
+    // TCDD API sorgusu (sunucu: impit)
+    const data = await fetchTrainAvailability(searchRequest);
     
     // Boş koltuk kontrolü
     const result = hasAvailableSeats(
