@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { kv } from '@/lib/kv-provider';
 import { checkTrainAvailability, hasAvailableSeats } from '@/lib/train-service';
-import { SearchResult, StoredSearch, SearchRequest } from '@/lib/types';
+import { createSearchRequestFromStations } from '@/lib/search-request';
+import { SearchResult, StoredSearch } from '@/lib/types';
 import axios from 'axios';
 
 // Cron job çalıştığında keyleri açığa çıkarmadan sorgular yapacağız
@@ -88,34 +89,13 @@ export async function GET() {
         console.log(`Arama yapılıyor: ${key}`);
         const searchParams = search.params;
 
-        // İstasyon ID'leri
-        const departureStationId = searchParams.departureStation.id;
-        const arrivalStationId = searchParams.arrivalStation.id;
+        // SearchRequest oluştur — gerçek e-bilet gövdesiyle birebir (id 0, searchReservation false, blTrainTypes)
+        const searchRequest = createSearchRequestFromStations({
+          departureStation: searchParams.departureStation,
+          arrivalStation: searchParams.arrivalStation,
+          departureDate: searchParams.departureDate,
+        });
 
-        // Tarih formatı
-        const departureDate = typeof searchParams.departureDate === 'string' ? 
-            searchParams.departureDate : 
-            new Date(searchParams.departureDate as string).toISOString().split('T')[0];
-        
-        // SearchRequest oluştur - TypeScript uyumlu
-        const searchRequest: SearchRequest = {
-          departureStationId: departureStationId,
-          arrivalStationId: arrivalStationId,
-          departureDate: departureDate,
-          searchRoutes: [{
-            departureStationId: parseInt(departureStationId),
-            departureStationName: searchParams.departureStation.name,
-            arrivalStationId: parseInt(arrivalStationId),
-            arrivalStationName: searchParams.arrivalStation.name,
-            departureDate: departureDate
-          }],
-          passengerTypeCounts: [
-            { id: 1, count: 1 } // Yetişkin
-          ],
-          searchReservation: true,
-          searchType: "TRAIN"
-        };
-        
         // TCDD API sorgusu
         const data = await checkTrainAvailability(searchRequest);
         

@@ -45,9 +45,6 @@ interface SearchResult {
 }
 
 interface SearchRequest {
-  departureStationId: string;
-  arrivalStationId: string;
-  departureDate: string;
   searchRoutes: {
     departureStationId: number;
     departureStationName: string;
@@ -57,7 +54,23 @@ interface SearchRequest {
   }[];
   passengerTypeCounts: { id: number; count: number }[];
   searchReservation: boolean;
-  searchType: string;
+  blTrainTypes: string[];
+}
+
+// İstasyon id'sinden sayısal kısmı çıkar ("gidis-48" -> 48)
+function stationNumericId(stationId: string): number {
+  const parts = stationId.split('-');
+  return parseInt(parts[parts.length - 1], 10);
+}
+
+// e-bilet ile aynı tarih kuralı: seçilen günden bir gün önce, 21:00:00
+function formatDepartureDateForAPI(input: string): string {
+  const prevDay = new Date(input);
+  prevDay.setDate(prevDay.getDate() - 1);
+  const dateStr = prevDay
+    .toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    .replace(/\./g, '-');
+  return `${dateStr} 21:00:00`;
 }
 
 // Worker ana fonksiyonu
@@ -251,30 +264,21 @@ async function removeSearch(env: Env, searchId: string): Promise<void> {
 // TCDD API'sine istek gönder
 async function checkTrainAvailability(searchData: StoredSearch, appUrl: string): Promise<SearchResult> {
   try {
-    // Arama bilgilerini hazırla
-    const departureStationId = searchData.params.departureStation.id;
-    const arrivalStationId = searchData.params.arrivalStation.id;
-    const departureDate = typeof searchData.params.departureDate === 'string' ? 
-      searchData.params.departureDate : 
-      new Date(searchData.params.departureDate).toISOString().split('T')[0];
-    
-    // SearchRequest oluştur
+    // SearchRequest oluştur — gerçek e-bilet gövdesiyle birebir
+    const departureDate = formatDepartureDateForAPI(searchData.params.departureDate);
     const searchRequest: SearchRequest = {
-      departureStationId: departureStationId,
-      arrivalStationId: arrivalStationId,
-      departureDate: departureDate,
       searchRoutes: [{
-        departureStationId: parseInt(departureStationId),
-        departureStationName: searchData.params.departureStation.name,
-        arrivalStationId: parseInt(arrivalStationId),
-        arrivalStationName: searchData.params.arrivalStation.name,
+        departureStationId: stationNumericId(searchData.params.departureStation.id),
+        departureStationName: searchData.params.departureStation.name.split(' , ')[0],
+        arrivalStationId: stationNumericId(searchData.params.arrivalStation.id),
+        arrivalStationName: searchData.params.arrivalStation.name.split(' , ')[0],
         departureDate: departureDate
       }],
       passengerTypeCounts: [
-        { id: 1, count: 1 } // Yetişkin
+        { id: 0, count: 1 }
       ],
-      searchReservation: true,
-      searchType: "TRAIN"
+      searchReservation: false,
+      blTrainTypes: ["TURISTIK_TREN"]
     };
     
     // Vercel API'sine istek gönder
