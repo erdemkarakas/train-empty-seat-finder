@@ -68,6 +68,32 @@ chmod +x public/icons/generate-icons.sh
 ./public/icons/generate-icons.sh path/to/source-icon.png
 ```
 
+## TCDD API Ortam Değişkenleri
+
+TCDD `train-availability` uç noktası botlara karşı üç katmanlı koruma uygular:
+
+1. **nginx WAF / TLS parmak izi** — tarayıcı olmayan istemciler 403 alır. Uygulama
+   `impit` ile Chrome/Firefox TLS taklidi yaparak bunu aşar (kod içinde, ayar gerekmez).
+2. **Veri merkezi IP bloğu** — Vercel/AWS gibi datacenter IP'lerinden gelen bağlantılar
+   TCP seviyesinde resetlenir (`Connection reset by peer`). Bunu aşmak için
+   **residential/mobil bir proxy** gerekir.
+3. **Yetkilendirme token'ı** — geçerli bir `Authorization` token'ı gerekir.
+
+Aşağıdaki değişkenleri Vercel proje ayarlarına (veya yerel `.env.local`) ekleyin:
+
+```bash
+# Residential/mobil proxy (HTTP, HTTPS, SOCKS4 veya SOCKS5 desteklenir).
+# Vercel'de zorunlu — datacenter IP'si TCDD tarafından resetlenir.
+TCDD_PROXY_URL=http://kullanici:parola@proxy-host:port
+
+# TCDD Bearer token'ı. Giriş yapılmış bir tarayıcı oturumundan alın:
+# DevTools > Network > train-availability isteği > Authorization header'ı.
+# Tanımsızsa kod içindeki (süresi dolmuş) public token'a düşer.
+TCDD_AUTH_TOKEN=eyJhbGciOi...
+```
+
+Yerelde (residential IP) `TCDD_PROXY_URL` gerekmez; yalnızca datacenter ortamlarında (Vercel) zorunludur.
+
 ## Lisans
 
 MIT

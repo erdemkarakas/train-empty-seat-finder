@@ -50,7 +50,10 @@ const requestWithBrowser = async (
   searchRequest: SearchRequest,
   token: string
 ): Promise<{ status: number; text: string }> => {
-  const client = new Impit({ browser });
+  // TCDD, veri merkezi (Vercel/AWS) IP'lerinden gelen bağlantıları TCP/TLS
+  // seviyesinde resetliyor. Residential/mobil bir proxy tanımlıysa impit onu kullanır.
+  const proxyUrl = process.env.TCDD_PROXY_URL || undefined;
+  const client = new Impit({ browser, proxyUrl });
   const response = await client.fetch(TCDD_API_URL, {
     method: 'POST',
     headers: buildHeaders(token),
@@ -66,24 +69,46 @@ export const fetchTrainAvailability = async (
   searchRequest: SearchRequest
 ): Promise<TrainData> => {
   const token = process.env.TCDD_AUTH_TOKEN || FALLBACK_AUTH_TOKEN;
+  const usingProxy = Boolean(process.env.TCDD_PROXY_URL);
   const browsers: Array<'chrome' | 'firefox'> = ['chrome', 'firefox'];
   let lastStatus = 0;
   let lastText = '';
+  let transportError: Error | null = null;
 
   for (const browser of browsers) {
-    const { status, text } = await requestWithBrowser(browser, searchRequest, token);
-    lastStatus = status;
-    lastText = text;
+    try {
+      const { status, text } = await requestWithBrowser(browser, searchRequest, token);
+      lastStatus = status;
+      lastText = text;
+      transportError = null;
 
-    if (status >= 200 && status < 300) {
-      return parseJsonOrThrow(text, status);
+      if (status >= 200 && status < 300) {
+        return parseJsonOrThrow(text, status);
+      }
+
+      console.error(`TCDD ${browser} isteği ${status}: ${previewBody(text)}`);
+
+      if (status !== 403) {
+        break;
+      }
+    } catch (err) {
+      // Bağlantı reset / timeout gibi taşıma katmanı hataları (yanıt gelmedi)
+      transportError = err instanceof Error ? err : new Error(String(err));
+      console.error(`TCDD ${browser} bağlantı hatası: ${transportError.message}`);
     }
+  }
 
-    console.error(`TCDD ${browser} isteği ${status}: ${previewBody(text)}`);
-
-    if (status !== 403) {
-      break;
-    }
+  if (transportError) {
+    const reset = /reset|connect|timeout|refused/i.test(transportError.message);
+    const hint =
+      reset && !usingProxy
+        ? ' TCDD veri merkezi IP\'lerini engelliyor olabilir; TCDD_PROXY_URL (residential proxy) tanımlayın.'
+        : '';
+    throw new TcddApiError(
+      `TCDD sunucusuna bağlanılamadı.${hint}`,
+      502,
+      previewBody(transportError.message)
+    );
   }
 
   throw new TcddApiError(
