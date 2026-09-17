@@ -1,4 +1,4 @@
-import { SearchFormData, SearchRequest } from '@/lib/types';
+import type { SearchFormData, SearchRequest } from './types';
 
 const parseStationNumericId = (stationId: string): number => {
   const parts = stationId.split('-');

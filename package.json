@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --test lib/*.test.ts"
+    "test": "node --test lib/*.test.ts",
+    "poll": "node --env-file=.env.local scripts/poll-trains.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",

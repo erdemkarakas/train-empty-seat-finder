@@ -94,6 +94,36 @@ TCDD_AUTH_TOKEN=eyJhbGciOi...
 
 Yerelde (residential IP) `TCDD_PROXY_URL` gerekmez; yalnızca datacenter ortamlarında (Vercel) zorunludur.
 
+## Ücretsiz Çözüm: Yerel Yoklayıcı (Residential IP)
+
+Ücretli proxy istemiyorsanız, koltuk taramasını kendi always-on makinenizde
+(residential IP) çalıştırın. Vercel yalnızca arayüz + arama kaydı için kalır;
+TCDD sorgusu residential IP'den gittiği için datacenter reset'i yaşanmaz.
+
+Script Upstash Redis'teki (`search:*`) aramaları okur, `impit` ile TCDD'yi
+sorgular, boş koltuk bulununca Telegram bildirimi atar ve aramayı siler.
+
+```bash
+# Tek seferlik çalıştırma
+yarn poll
+
+# veya doğrudan (Node 22+ gerekli — native TS type-stripping)
+node --env-file=.env.local scripts/poll-trains.ts
+
+# 60 saniyede bir tekrar (Ctrl+C ile durur)
+node --env-file=.env.local scripts/poll-trains.ts --watch 60
+```
+
+`.env.local` içinde `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` ve
+(taze) `TCDD_AUTH_TOKEN` bulunmalı. `TCDD_PROXY_URL` gerekmez.
+
+Sürekli çalışması için cron/launchd örneği (her dakika):
+
+```bash
+# crontab -e
+* * * * * cd /path/to/fast-train-empty-seat-finder && /usr/local/bin/node --env-file=.env.local scripts/poll-trains.ts >> /tmp/tcdd-poll.log 2>&1
+```
+
 ## Lisans
 
 MIT

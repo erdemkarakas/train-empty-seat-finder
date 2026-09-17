@@ -1,5 +1,7 @@
 import { Impit } from 'impit';
-import { SearchRequest, TrainData } from '@/lib/types';
+// Type-only import (relative, no extension) so this module also runs under
+// Node's native TS type-stripping in the standalone poller (scripts/poll-trains.ts).
+import type { SearchRequest, TrainData } from './types';
 
 export const TCDD_API_URL =
   'https://web-api-prod-ytp.tcddtasimacilik.gov.tr/tms/train/train-availability?environment=dev&userId=1';
